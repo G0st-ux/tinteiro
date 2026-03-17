@@ -1,5 +1,5 @@
 import React from 'react';
-import { Edit3, Users, Book, Quote } from 'lucide-react';
+import { Edit3, Users, Book, Quote, BookOpen, PenTool, Type } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { QUOTES } from '../constants';
 import { Story, Character } from '../types';
@@ -44,18 +44,21 @@ export const Dashboard: React.FC<DashboardProps> = ({ t, stories, characters }) 
       </div>
 
       {/* Stats */}
-      <div className="flex flex-wrap gap-8 text-sm">
-        <div className="flex items-baseline gap-2">
-          <span className="opacity-50">{t.totalStories}</span>
-          <span className="font-bold text-lg">{stories.length}</span>
+      <div className="grid grid-cols-3 gap-3">
+        <div className="inkwell-card flex flex-col items-center justify-center p-4 text-center gap-1">
+          <BookOpen size={22} className="text-[var(--accent)] opacity-80" />
+          <span className="text-2xl font-bold text-[var(--accent)]">{stories.length}</span>
+          <span className="text-xs opacity-50">{t.totalStories}</span>
         </div>
-        <div className="flex items-baseline gap-2">
-          <span className="opacity-50">{t.totalChars}</span>
-          <span className="font-bold text-lg">{characters.length}</span>
+        <div className="inkwell-card flex flex-col items-center justify-center p-4 text-center gap-1">
+          <Users size={22} className="text-[var(--accent)] opacity-80" />
+          <span className="text-2xl font-bold text-[var(--accent)]">{characters.length}</span>
+          <span className="text-xs opacity-50">{t.totalChars}</span>
         </div>
-        <div className="flex items-baseline gap-2">
-          <span className="opacity-50">{t.totalWords}</span>
-          <span className="font-bold text-lg">{totalChars.toLocaleString()}</span>
+        <div className="inkwell-card flex flex-col items-center justify-center p-4 text-center gap-1">
+          <Type size={22} className="text-[var(--accent)] opacity-80" />
+          <span className="text-2xl font-bold text-[var(--accent)]">{totalChars.toLocaleString()}</span>
+          <span className="text-xs opacity-50">{t.totalWords}</span>
         </div>
       </div>
 
