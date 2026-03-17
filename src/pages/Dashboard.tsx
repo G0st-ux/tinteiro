@@ -1,5 +1,5 @@
 import React from 'react';
-import { Edit3, Users, Book, Quote, BookOpen, PenTool, Type } from 'lucide-react';
+import { Edit3, Users, Book, Quote, BookOpen, Type } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { QUOTES } from '../constants';
 import { Story, Character } from '../types';
@@ -8,9 +8,10 @@ interface DashboardProps {
   t: any;
   stories: Story[];
   characters: Character[];
+  usuario?: any;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ t, stories, characters }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ t, stories, characters, usuario }) => {
   const [quote, setQuote] = React.useState(QUOTES[0]);
 
   React.useEffect(() => {
@@ -27,10 +28,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ t, stories, characters }) 
     { to: "/library", icon: Book, label: t.library, color: "bg-emerald-500" },
   ];
 
+  const nomeUsuario = usuario?.nome || usuario?.name || usuario?.email?.split('@')[0] || 'escritor';
+
   return (
     <div className="space-y-8 fade-in">
       <header>
-        <h1 className="text-4xl font-bold mb-2">{t.welcome}</h1>
+        <h1 className="text-4xl font-bold mb-2">Olá, {nomeUsuario}! ✨</h1>
         <p className="opacity-60">{t.slogan}</p>
       </header>
 
