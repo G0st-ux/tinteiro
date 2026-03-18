@@ -29,19 +29,19 @@ const getSystemPrompt = (length: 'fast' | 'detailed') => {
 const INITIAL_MESSAGE: Message = { role: 'model', text: 'Olá! Eu sou Muse, sua assistente de escrita criativa. Estou aqui para ajudar você a dar vida às suas histórias. O que vamos criar hoje?' };
 
 export const AIChat: React.FC<AIChatProps> = ({ settings, t }) => {
-  const [messages, setMessages] = useLocalStorage<Message[]>('inkwell-chat-history', [INITIAL_MESSAGE]);
+  const [savedMessages, setSavedMessages] = useLocalStorage<Message[]>('inkwell-chat-history', [INITIAL_MESSAGE]);
+  const [messages, setMessages] = useState<Message[]>(savedMessages);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [responseLength, setResponseLength] = useState<'fast' | 'detailed'>('fast');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [hasUserSentMessage, setHasUserSentMessage] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  const hasUserSentMessage = messages.some(m => m.role === 'user');
+
   useEffect(() => {
-    // Verifica se já existe mensagem do usuário no histórico
-    const userMsgExists = messages.some(m => m.role === 'user');
-    setHasUserSentMessage(userMsgExists);
-  }, []);
+    setSavedMessages(messages);
+  }, [messages]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -53,19 +53,18 @@ export const AIChat: React.FC<AIChatProps> = ({ settings, t }) => {
     const messageText = text || input.trim();
     if (!messageText || isLoading) return;
 
-    setHasUserSentMessage(true);
-
     const userMessage: Message = { role: 'user', text: messageText };
     const updatedMessages = [...messages, userMessage];
+    const messagesWithPlaceholder = [...updatedMessages, { role: 'model' as const, text: "" }];
     
-    setMessages([...updatedMessages, { role: 'model', text: "" }]);
+    setMessages(messagesWithPlaceholder);
     setInput('');
     setIsLoading(true);
 
     let fullResponse = "";
 
     try {
-      const apiKey = settings.geminiKey || import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+      const apiKey = settings.geminiKey || import.meta.env.VITE_GEMINI_API_KEY;
       if (!apiKey) throw new Error("API Key não configurada");
 
       const ai = new GoogleGenAI({ apiKey });
@@ -81,17 +80,12 @@ export const AIChat: React.FC<AIChatProps> = ({ settings, t }) => {
       });
 
       for await (const chunk of stream) {
-        const textChunk = chunk.text || "";
-        fullResponse += textChunk;
-        setMessages(prev => {
-          const newMsgs = [...prev];
-          newMsgs[newMsgs.length - 1] = { role: 'model', text: fullResponse };
-          return newMsgs;
-        });
+        fullResponse += chunk.text || "";
+        setMessages([...updatedMessages, { role: 'model', text: fullResponse }]);
       }
     } catch (error) {
       console.error(error);
-      setMessages(prev => [...prev.slice(0, -1), { role: 'model' as const, text: "Erro ao conectar com a Muse. Verifique sua API Key nas configurações." }]);
+      setMessages([...updatedMessages, { role: 'model', text: "Erro ao conectar com a Muse. Verifique sua API Key nas configurações." }]);
     } finally {
       setIsLoading(false);
     }
@@ -99,7 +93,6 @@ export const AIChat: React.FC<AIChatProps> = ({ settings, t }) => {
 
   const clearChat = () => {
     setMessages([INITIAL_MESSAGE]);
-    setHasUserSentMessage(false);
     setShowDeleteConfirm(false);
   };
 
@@ -118,7 +111,7 @@ export const AIChat: React.FC<AIChatProps> = ({ settings, t }) => {
             {responseLength === 'fast' ? <Zap size={14} /> : <BookOpen size={14} />}
             {responseLength === 'fast' ? 'Rápida' : 'Detalhada'}
           </button>
-          <button onClick={() => setShowDeleteConfirm(true)} className="p-2 hover:bg-red-500/10 hover:text-red-500 rounded-lg transition-all" title="Excluir Chat">
+          <button onClick={() => setShowDeleteConfirm(true)} className="p-2 hover:bg-red-500/10 hover:text-red-500 rounded-lg transition-all">
             <Trash2 size={18} />
           </button>
         </div>
@@ -132,7 +125,7 @@ export const AIChat: React.FC<AIChatProps> = ({ settings, t }) => {
                 {msg.role === 'user' ? <User size={18} /> : <Bot size={18} className="text-[var(--accent)]" />}
               </div>
               <div className="text-sm leading-relaxed whitespace-pre-wrap font-serif">
-                {msg.text}
+                {msg.text || <Loader2 className="animate-spin" size={16} />}
               </div>
               {msg.role === 'model' && msg.text && (
                 <button onClick={() => navigator.clipboard.writeText(msg.text)} className="opacity-30 hover:opacity-100 self-start mt-1">
@@ -142,14 +135,6 @@ export const AIChat: React.FC<AIChatProps> = ({ settings, t }) => {
             </div>
           </div>
         ))}
-        {isLoading && messages[messages.length - 1]?.text === "" && (
-          <div className="flex justify-start">
-            <div className="bg-[var(--card)] border border-[var(--border)] p-4 rounded-2xl rounded-tl-none flex gap-3 items-center">
-              <Bot size={18} className="text-[var(--accent)]" />
-              <Loader2 className="animate-spin text-[var(--accent)]" size={18} />
-            </div>
-          </div>
-        )}
       </div>
 
       <div className="p-4 bg-[var(--card)] border-t border-[var(--border)]">
@@ -190,3 +175,7 @@ export const AIChat: React.FC<AIChatProps> = ({ settings, t }) => {
             </div>
           </div>
         </div>
+      )}
+    </div>
+  );
+};
