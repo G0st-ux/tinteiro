@@ -4,7 +4,7 @@ import { supabase } from '../services/supabase';
 import { 
   Home, Edit3, Book, MessageSquare, Zap, 
   Image as ImageIcon, Users, Map, Settings, Palette, Menu, X, LogOut, User,
-  BookOpen, Globe, Bell, Search
+  BookOpen, Globe, Bell, Search, Library, Sword, DoorOpen, Compass
 } from 'lucide-react';
 import { THEMES, TRANSLATIONS } from '../constants';
 import { AppSettings } from '../types';
@@ -52,11 +52,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ usuario, settings, setSettings
     { to: "/generator", icon: Zap, label: t.storyGen },
     { to: "/image-gen", icon: ImageIcon, label: t.imageGen },
     { to: "/minhas-historias", icon: BookOpen, label: "Minhas Histórias" },
-    { to: "/explorar", icon: Globe, label: "Explorar" },
+    { to: "/explorar", icon: Compass, label: "Explorar" },
     { to: "/buscar", icon: Search, label: "Buscar" },
     { to: "/notificacoes", icon: Bell, label: "Notificações", badge: unreadCount },
-    { to: "/salas", icon: Users, label: "Salas" },
-    { to: "/characters", icon: Users, label: t.characters },
+    { to: "/salas", icon: DoorOpen, label: "Salas" },
+    { to: "/characters", icon: Sword, label: t.characters },
     { to: "/world", icon: Map, label: t.world },
     { to: "/perfil", icon: User, label: "Perfil" },
     { to: "/settings", icon: Settings, label: t.settings },
