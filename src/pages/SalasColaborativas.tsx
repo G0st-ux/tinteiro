@@ -100,24 +100,28 @@ export const SalasColaborativas: React.FC<SalasColaborativasProps> = ({ usuario,
 
   const handleAceitarConvite = async (convite: any) => {
     try {
+      const meuId = Number(usuario.id);
+      const salaId = Number(convite.id);
+      const donoId = Number(convite.dono_id);
+
       // 1. Atualizar status da colaboração
       await supabase
         .from('colaboracoes')
         .update({ status: 'aceito' })
-        .eq('id', convite.id);
+        .eq('id', salaId);
 
       // 2. Inserir como membro
       await supabase
         .from('membros_sala')
         .insert({ 
-          sala_id: convite.id, 
-          usuario_id: usuario.id, 
+          sala_id: salaId, 
+          usuario_id: meuId, 
           papel: 'colaborador' 
         });
 
       // 3. Notificar dono
       await criarNotificacao(
-        convite.dono_id, 
+        donoId, 
         'colaboracao', 
         `${usuario.nome} aceitou seu convite para a sala "${convite.nome}"!`
       );
@@ -130,13 +134,16 @@ export const SalasColaborativas: React.FC<SalasColaborativasProps> = ({ usuario,
 
   const handleRecusarConvite = async (convite: any) => {
     try {
+      const salaId = Number(convite.id);
+      const donoId = Number(convite.dono_id);
+
       await supabase
         .from('colaboracoes')
         .update({ status: 'recusado' })
-        .eq('id', convite.id);
+        .eq('id', salaId);
 
       await criarNotificacao(
-        convite.dono_id, 
+        donoId, 
         'colaboracao', 
         `${usuario.nome} recusou seu convite para a sala "${convite.nome}"!`
       );
@@ -152,13 +159,15 @@ export const SalasColaborativas: React.FC<SalasColaborativasProps> = ({ usuario,
     setCarregando(true);
 
     try {
+      const meuId = Number(usuario.id);
+
       // 1. Criar a sala base (para o dono)
       const { data: novaSala, error: erroSala } = await supabase
         .from('colaboracoes')
         .insert({
           nome: nomeSala,
           descricao: descricaoSala,
-          dono_id: usuario.id,
+          dono_id: meuId,
           status: 'aceito' // Dono já aceita automaticamente
         })
         .select()
@@ -170,23 +179,24 @@ export const SalasColaborativas: React.FC<SalasColaborativasProps> = ({ usuario,
       await supabase
         .from('membros_sala')
         .insert({ 
-          sala_id: novaSala.id, 
-          usuario_id: usuario.id, 
+          sala_id: Number(novaSala.id), 
+          usuario_id: meuId, 
           papel: 'dono' 
         });
 
       // 3. Enviar convites para os outros
       for (const convidado of convidados) {
+        const convidadoId = Number(convidado.id);
         await supabase.from('colaboracoes').insert({
           nome: nomeSala,
           descricao: descricaoSala,
-          dono_id: usuario.id,
-          convidado_id: convidado.id,
+          dono_id: meuId,
+          convidado_id: convidadoId,
           status: 'pendente'
         });
         
         await criarNotificacao(
-          convidado.id, 
+          convidadoId, 
           'colaboracao', 
           `${usuario.nome} te convidou para a sala "${nomeSala}"!`
         );

@@ -4,7 +4,7 @@ import { supabase } from '../services/supabase';
 import { 
   Home, Edit3, Book, MessageSquare, Zap, 
   Image as ImageIcon, Users, Map, Settings, Palette, Menu, X, LogOut, User,
-  BookOpen, Globe, Bell, Search, Library, Sword, DoorOpen, Compass
+  BookOpen, Globe, Bell, Search, Compass, DoorOpen, Sword
 } from 'lucide-react';
 import { THEMES, TRANSLATIONS } from '../constants';
 import { AppSettings } from '../types';

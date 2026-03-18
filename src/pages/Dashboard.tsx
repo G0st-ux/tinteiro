@@ -8,7 +8,7 @@ interface DashboardProps {
   t: any;
   stories: Story[];
   characters: Character[];
-  usuario?: any;
+  usuario: any;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({ t, stories, characters, usuario }) => {
@@ -21,14 +21,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ t, stories, characters, us
 
   const totalChars = stories.reduce((acc, s) => acc + (s.charCount || 0), 0);
   const recentStories = [...stories].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 3);
+  const nomeUsuario = usuario?.nome || usuario?.name || usuario?.email?.split('@')[0] || 'escritor';
 
   const quickActions = [
     { to: "/editor", icon: Edit3, label: t.editor, color: "bg-blue-500" },
     { to: "/characters", icon: Users, label: t.characters, color: "bg-purple-500" },
     { to: "/library", icon: Book, label: t.library, color: "bg-emerald-500" },
   ];
-
-  const nomeUsuario = usuario?.nome || usuario?.name || usuario?.email?.split('@')[0] || 'escritor';
 
   return (
     <div className="space-y-8 fade-in">

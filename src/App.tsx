@@ -1,4 +1,4 @@
-        import React, { useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './pages/Dashboard';
@@ -25,6 +25,7 @@ import { Usuario } from './services/supabase';
 import { THEMES, TRANSLATIONS } from './constants';
 import { useNavigate } from 'react-router-dom';
 
+// Placeholder components for other pages
 const Placeholder = ({ title }: { title: string }) => (
   <div className="flex flex-col items-center justify-center h-[60vh] fade-in">
     <h1 className="text-4xl font-bold font-serif mb-4">{title}</h1>
@@ -81,6 +82,7 @@ function AppContent({
             )
           } />
           
+          {/* Story System Routes */}
           <Route path="/minhas-historias" element={<MinhasHistorias usuario={usuario} t={t} onVerCapitulos={(h) => navigate(`/minhas-historias/${h.id}/capitulos`)} />} />
           <Route path="/minhas-historias/:id/capitulos" element={<Capitulos usuario={usuario} t={t} />} />
           <Route path="/explorar" element={<Biblioteca t={t} onVerHistoria={(h) => navigate(`/leitor/${h.id}`)} />} />
@@ -101,6 +103,7 @@ export default function App() {
   const [locations, setLocations] = useLocalStorage<Location[]>('inkwell-locations', []);
 
   useEffect(() => {
+    // Initialize with example data if empty
     if (characters.length === 0 && stories.length === 0 && locations.length === 0) {
       const exampleChar: Character = {
         id: 'ex1',
@@ -247,4 +250,4 @@ export default function App() {
       />
     </Router>
   );
-    }
+}

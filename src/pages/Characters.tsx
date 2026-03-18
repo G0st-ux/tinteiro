@@ -27,24 +27,40 @@ const TagInput: React.FC<{
 }> = ({ label, items, onAdd, onEdit, placeholder }) => {
   const [input, setInput] = useState('');
 
+  const handleAdd = () => {
+    if (input.trim()) {
+      onAdd(input.trim());
+      setInput('');
+    }
+  };
+
   return (
     <div className="space-y-1">
       <label className="text-[10px] font-bold uppercase opacity-50">{label}</label>
       <div className="space-y-2">
-        <input 
-          type="text" 
-          value={input} 
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={e => {
-            if (e.key === 'Enter' && input.trim()) {
-              e.preventDefault();
-              onAdd(input.trim());
-              setInput('');
-            }
-          }}
-          placeholder={placeholder || "Digite e aperte Enter..."}
-          className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-1.5 focus:border-[var(--accent)] outline-none text-sm" 
-        />
+        <div className="flex gap-2">
+          <input 
+            type="text" 
+            value={input} 
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleAdd();
+              }
+            }}
+            placeholder={placeholder || "Adicionar..."}
+            className="flex-1 bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-1.5 focus:border-[var(--accent)] outline-none text-sm" 
+          />
+          <button 
+            type="button"
+            onClick={handleAdd}
+            className="px-3 bg-[var(--accent)] text-white rounded-lg hover:opacity-90 transition-opacity flex items-center justify-center"
+            title="Adicionar"
+          >
+            <Plus size={16} />
+          </button>
+        </div>
         <div className="flex flex-wrap gap-2">
           {items.map((item, index) => (
             <button

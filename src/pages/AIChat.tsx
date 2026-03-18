@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { GoogleGenAI } from "@google/genai";
-import { Send, Bot, User, Loader2, Sparkles, Trash2, Copy, Zap, BookOpen } from 'lucide-react';
+import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
+import { Send, Bot, User, Loader2, Sparkles, Trash2, Plus, Copy, Zap, BookOpen } from 'lucide-react';
 import { AppSettings, useLocalStorage } from '../types';
 
 interface AIChatProps {
@@ -26,22 +26,15 @@ const getSystemPrompt = (length: 'fast' | 'detailed') => {
   return base + " Seja detalhada, aprofundada, dê exemplos concretos e explique o porquê das coisas.";
 };
 
-const INITIAL_MESSAGE: Message = { role: 'model', text: 'Olá! Eu sou Muse, sua assistente de escrita criativa. Estou aqui para ajudar você a dar vida às suas histórias. O que vamos criar hoje?' };
-
 export const AIChat: React.FC<AIChatProps> = ({ settings, t }) => {
-  const [savedMessages, setSavedMessages] = useLocalStorage<Message[]>('inkwell-chat-history', [INITIAL_MESSAGE]);
-  const [messages, setMessages] = useState<Message[]>(savedMessages);
+  const [messages, setMessages] = useLocalStorage<Message[]>('inkwell-chat-history', [
+    { role: 'model', text: 'Olá! Eu sou Muse, sua assistente de escrita criativa. Estou aqui para ajudar você a dar vida às suas histórias. O que vamos criar hoje?' }
+  ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [responseLength, setResponseLength] = useState<'fast' | 'detailed'>('fast');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-
-  const hasUserSentMessage = messages.some(m => m.role === 'user');
-
-  useEffect(() => {
-    setSavedMessages(messages);
-  }, [messages]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -53,18 +46,17 @@ export const AIChat: React.FC<AIChatProps> = ({ settings, t }) => {
     const messageText = text || input.trim();
     if (!messageText || isLoading) return;
 
-    const userMessage: Message = { role: 'user', text: messageText };
+    const userMessage = { role: 'user' as const, text: messageText };
     const updatedMessages = [...messages, userMessage];
-    const messagesWithPlaceholder = [...updatedMessages, { role: 'model' as const, text: "" }];
     
-    setMessages(messagesWithPlaceholder);
+    setMessages([...updatedMessages, { role: 'model', text: "" }]);
     setInput('');
     setIsLoading(true);
 
     let fullResponse = "";
 
     try {
-      const apiKey = settings.geminiKey || import.meta.env.VITE_GEMINI_API_KEY;
+      const apiKey = settings.geminiKey || import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
       if (!apiKey) throw new Error("API Key não configurada");
 
       const ai = new GoogleGenAI({ apiKey });
@@ -80,19 +72,24 @@ export const AIChat: React.FC<AIChatProps> = ({ settings, t }) => {
       });
 
       for await (const chunk of stream) {
-        fullResponse += chunk.text || "";
-        setMessages([...updatedMessages, { role: 'model', text: fullResponse }]);
+        const textChunk = chunk.text || "";
+        fullResponse += textChunk;
+        setMessages(prev => {
+          const newMsgs = [...prev];
+          newMsgs[newMsgs.length - 1].text = fullResponse;
+          return newMsgs;
+        });
       }
     } catch (error) {
       console.error(error);
-      setMessages([...updatedMessages, { role: 'model', text: "Erro ao conectar com a Muse. Verifique sua API Key nas configurações." }]);
+      setMessages(prev => [...prev.slice(0, -1), { role: 'model' as const, text: "Erro ao conectar com a Muse. Verifique sua API Key nas configurações." }]);
     } finally {
       setIsLoading(false);
     }
   };
 
   const clearChat = () => {
-    setMessages([INITIAL_MESSAGE]);
+    setMessages([{ role: 'model', text: 'Olá! Estou pronta para uma nova jornada criativa. Como posso ajudar?' }]);
     setShowDeleteConfirm(false);
   };
 
@@ -111,7 +108,7 @@ export const AIChat: React.FC<AIChatProps> = ({ settings, t }) => {
             {responseLength === 'fast' ? <Zap size={14} /> : <BookOpen size={14} />}
             {responseLength === 'fast' ? 'Rápida' : 'Detalhada'}
           </button>
-          <button onClick={() => setShowDeleteConfirm(true)} className="p-2 hover:bg-red-500/10 hover:text-red-500 rounded-lg transition-all">
+          <button onClick={() => setShowDeleteConfirm(true)} className="p-2 hover:bg-red-500/10 hover:text-red-500 rounded-lg transition-all" title="Excluir Chat">
             <Trash2 size={18} />
           </button>
         </div>
@@ -125,7 +122,7 @@ export const AIChat: React.FC<AIChatProps> = ({ settings, t }) => {
                 {msg.role === 'user' ? <User size={18} /> : <Bot size={18} className="text-[var(--accent)]" />}
               </div>
               <div className="text-sm leading-relaxed whitespace-pre-wrap font-serif">
-                {msg.text || <Loader2 className="animate-spin" size={16} />}
+                {msg.text}
               </div>
               {msg.role === 'model' && msg.text && (
                 <button onClick={() => navigator.clipboard.writeText(msg.text)} className="opacity-30 hover:opacity-100 self-start mt-1">
@@ -139,7 +136,7 @@ export const AIChat: React.FC<AIChatProps> = ({ settings, t }) => {
 
       <div className="p-4 bg-[var(--card)] border-t border-[var(--border)]">
         <div className="max-w-4xl mx-auto space-y-4">
-          {!hasUserSentMessage && !isLoading && (
+          {messages.length <= 1 && !isLoading && (
             <div className="flex flex-wrap gap-2">
               {SUGGESTIONS.map((s, i) => (
                 <button key={i} onClick={() => handleSend(s)} className="text-xs px-3 py-1.5 bg-[var(--bg)] border border-[var(--border)] rounded-full hover:border-[var(--accent)] transition-all">

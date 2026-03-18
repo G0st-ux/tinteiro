@@ -93,13 +93,41 @@ export const SalaColaborativa: React.FC<SalaColaborativaProps> = ({ sala, usuari
     init();
   }, [sala.id]);
 
-  // Polling para o chat
+  // Realtime subscription for the chat
   useEffect(() => {
-    if (abaAtiva === 'chat') {
-      const interval = setInterval(carregarMensagens, 5000);
-      return () => clearInterval(interval);
-    }
-  }, [abaAtiva, sala.id]);
+    const channel = supabase
+      .channel(`sala-${sala.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'mensagens_sala',
+          filter: `sala_id=eq.${sala.id}`
+        },
+        async (payload) => {
+          // Fetch the full message with user info when a new one arrives
+          const { data, error } = await supabase
+            .from('mensagens_sala')
+            .select('*, usuarios(nome, foto)')
+            .eq('id', payload.new.id)
+            .single();
+          
+          if (!error && data) {
+            setMensagens(prev => {
+              // Avoid duplicates
+              if (prev.some(m => m.id === data.id)) return prev;
+              return [...prev, data];
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [sala.id]);
 
   // Auto-scroll chat
   useEffect(() => {
@@ -114,12 +142,18 @@ export const SalaColaborativa: React.FC<SalaColaborativaProps> = ({ sala, usuari
     setNovaMensagem('');
 
     try {
-      await supabase.from('mensagens_sala').insert({
-        sala_id: sala.id,
-        usuario_id: usuario.id,
+      // Ensure IDs are numbers if the DB expects integers
+      const salaId = isNaN(Number(sala.id)) ? sala.id : Number(sala.id);
+      const usuarioId = isNaN(Number(usuario.id)) ? usuario.id : Number(usuario.id);
+
+      const { error } = await supabase.from('mensagens_sala').insert({
+        sala_id: salaId,
+        usuario_id: usuarioId,
         texto
       });
-      carregarMensagens();
+      
+      if (error) throw error;
+      // No need to manually call carregarMensagens, the Realtime subscription will handle it
     } catch (error) {
       console.error('Erro ao enviar mensagem:', error);
     }
@@ -233,7 +267,7 @@ export const SalaColaborativa: React.FC<SalaColaborativaProps> = ({ sala, usuari
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="h-[600px] flex flex-col bg-[var(--card)] border border-[var(--border)] rounded-[2.5rem] overflow-hidden shadow-sm"
+              className="flex-1 flex flex-col bg-[var(--card)] border border-[var(--border)] rounded-[2.5rem] overflow-hidden shadow-sm min-h-[500px] max-h-[70vh] md:max-h-[600px]"
             >
               <div className="flex-1 overflow-y-auto p-8 space-y-6">
                 {mensagens.map((msg, i) => {

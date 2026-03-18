@@ -34,6 +34,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ usuario, setUsuario, t
   const [abaAtiva, setAbaAtiva] = useState<'historias' | 'favoritos'>('historias');
   const [modalEdicaoAberto, setModalEdicaoAberto] = useState(false);
   const [carregando, setCarregando] = useState(true);
+  const [processandoSeguir, setProcessandoSeguir] = useState(false);
 
   // Estados de edição
   const [editNome, setEditNome] = useState(usuario.nome);
@@ -107,19 +108,32 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ usuario, setUsuario, t
     carregarDadosPerfil(idParaCarregar);
   }, [perfilIdParam, usuario.id, carregarDadosPerfil]);
 
-  const handleSeguir = async () => {
+  const handleSeguir = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const meuId = usuario?.id || (usuario as any)?.uid;
+    if (!meuId) return;
+
+    if (processandoSeguir) return;
+    setProcessandoSeguir(true);
+
     try {
       if (jaSeguindo) {
-        await supabase
+        const { error } = await supabase
           .from('seguidores')
           .delete()
-          .eq('seguidor_id', usuario.id)
+          .eq('seguidor_id', meuId)
           .eq('seguido_id', perfilVisualizado.id);
+        
+        if (error) throw error;
         setSeguidores(prev => prev - 1);
       } else {
-        await supabase
+        const { error } = await supabase
           .from('seguidores')
-          .insert({ seguidor_id: usuario.id, seguido_id: perfilVisualizado.id });
+          .insert({ seguidor_id: meuId, seguido_id: perfilVisualizado.id });
+        
+        if (error) throw error;
         setSeguidores(prev => prev + 1);
         
         await criarNotificacao(
@@ -130,8 +144,10 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ usuario, setUsuario, t
         );
       }
       setJaSeguindo(!jaSeguindo);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao seguir/deixar de seguir:', error);
+    } finally {
+      setProcessandoSeguir(false);
     }
   };
 
@@ -244,14 +260,19 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ usuario, setUsuario, t
               </button>
             ) : (
               <button 
-                onClick={handleSeguir}
-                className={`flex items-center justify-center gap-2 px-8 py-2 rounded-xl font-bold text-sm transition-all ${
+                onClick={(e) => handleSeguir(e)}
+                disabled={processandoSeguir}
+                className={`relative z-10 flex items-center justify-center gap-2 px-8 py-2 rounded-xl font-bold text-sm transition-all ${
                   jaSeguindo 
-                    ? 'border border-[var(--border)] opacity-70 hover:opacity-100' 
-                    : 'bg-emerald-500 text-white hover:bg-emerald-600'
-                }`}
+                    ? 'border border-[var(--border)] opacity-70' 
+                    : 'bg-emerald-500 text-white'
+                } ${processandoSeguir ? 'opacity-50' : 'hover:scale-105 active:scale-95'}`}
               >
-                <Users size={16} />
+                {processandoSeguir ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <Users size={16} />
+                )}
                 {jaSeguindo ? 'Seguindo' : 'Seguir'}
               </button>
             )}

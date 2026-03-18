@@ -28,6 +28,7 @@ export const BuscaUsuarios: React.FC<BuscaUsuariosProps> = ({ usuario, t }) => {
   const [seguindoIds, setSeguindoIds] = useState<Set<string>>(new Set());
   const [carregando, setCarregando] = useState(false);
   const [carregandoSugestoes, setCarregandoSugestoes] = useState(true);
+  const [processandoId, setProcessandoId] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const buscarSugestoes = async () => {
@@ -52,6 +53,7 @@ export const BuscaUsuarios: React.FC<BuscaUsuariosProps> = ({ usuario, t }) => {
   };
 
   const buscarSeguindo = async () => {
+    if (!usuario?.id) return;
     try {
       const { data, error } = await supabase
         .from('seguidores')
@@ -60,8 +62,9 @@ export const BuscaUsuarios: React.FC<BuscaUsuariosProps> = ({ usuario, t }) => {
 
       if (error) throw error;
       setSeguindoIds(new Set(data.map(s => s.seguido_id)));
-    } catch (err) {
+    } catch (err: any) {
       console.error('Erro ao buscar seguindo:', err);
+      // Não alertar aqui para não atrapalhar o carregamento inicial, mas logar detalhado
     }
   };
 
@@ -104,7 +107,16 @@ export const BuscaUsuarios: React.FC<BuscaUsuariosProps> = ({ usuario, t }) => {
   }, [busca, realizarBusca]);
 
   const handleSeguir = async (alvo: UsuarioResultado, e: React.MouseEvent) => {
+    e.preventDefault();
     e.stopPropagation();
+    
+    const meuId = usuario?.id || (usuario as any)?.uid;
+    
+    if (!meuId) return;
+
+    if (processandoId) return;
+    setProcessandoId(alvo.id);
+    
     const jaSegue = seguindoIds.has(alvo.id);
 
     try {
@@ -112,10 +124,11 @@ export const BuscaUsuarios: React.FC<BuscaUsuariosProps> = ({ usuario, t }) => {
         const { error } = await supabase
           .from('seguidores')
           .delete()
-          .eq('seguidor_id', usuario.id)
+          .eq('seguidor_id', meuId)
           .eq('seguido_id', alvo.id);
 
         if (error) throw error;
+        
         setSeguindoIds(prev => {
           const next = new Set(prev);
           next.delete(alvo.id);
@@ -124,9 +137,10 @@ export const BuscaUsuarios: React.FC<BuscaUsuariosProps> = ({ usuario, t }) => {
       } else {
         const { error } = await supabase
           .from('seguidores')
-          .insert({ seguidor_id: usuario.id, seguido_id: alvo.id });
+          .insert({ seguidor_id: meuId, seguido_id: alvo.id });
 
         if (error) throw error;
+        
         setSeguindoIds(prev => new Set(prev).add(alvo.id));
         
         await criarNotificacao(
@@ -136,8 +150,10 @@ export const BuscaUsuarios: React.FC<BuscaUsuariosProps> = ({ usuario, t }) => {
           '/perfil'
         );
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Erro ao processar seguir:', err);
+    } finally {
+      setProcessandoId(null);
     }
   };
 
@@ -167,14 +183,18 @@ export const BuscaUsuarios: React.FC<BuscaUsuariosProps> = ({ usuario, t }) => {
 
       <button 
         onClick={(e) => handleSeguir(u, e)}
+        disabled={processandoId === u.id}
         className={`
-          px-5 py-2.5 rounded-2xl text-sm font-bold transition-all flex items-center gap-2
+          relative z-10 px-5 py-2.5 rounded-2xl text-sm font-bold transition-all flex items-center gap-2
           ${seguindoIds.has(u.id) 
-            ? 'bg-[var(--bg)] text-[var(--text)] border border-[var(--border)] hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/20' 
-            : 'bg-[var(--accent)] text-white shadow-lg shadow-[var(--accent)]/20 hover:scale-105 active:scale-95'}
+            ? 'bg-[var(--bg)] text-[var(--text)] border border-[var(--border)]' 
+            : 'bg-[var(--accent)] text-white shadow-lg shadow-[var(--accent)]/20'}
+          ${processandoId === u.id ? 'opacity-50' : 'hover:scale-105 active:scale-95'}
         `}
       >
-        {seguindoIds.has(u.id) ? (
+        {processandoId === u.id ? (
+          <Loader2 size={16} className="animate-spin" />
+        ) : seguindoIds.has(u.id) ? (
           <><UserMinus size={16} /> Seguindo</>
         ) : (
           <><UserPlus size={16} /> Seguir</>
