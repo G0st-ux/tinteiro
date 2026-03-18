@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
-import { Send, Bot, User, Loader2, Sparkles, Trash2, Plus, Copy, Zap, BookOpen } from 'lucide-react';
+import { GoogleGenAI } from "@google/genai";
+import { Send, Bot, User, Loader2, Sparkles, Trash2, Copy, Zap, BookOpen } from 'lucide-react';
 import { AppSettings, useLocalStorage } from '../types';
 
 interface AIChatProps {
@@ -26,15 +26,22 @@ const getSystemPrompt = (length: 'fast' | 'detailed') => {
   return base + " Seja detalhada, aprofundada, dê exemplos concretos e explique o porquê das coisas.";
 };
 
+const INITIAL_MESSAGE: Message = { role: 'model', text: 'Olá! Eu sou Muse, sua assistente de escrita criativa. Estou aqui para ajudar você a dar vida às suas histórias. O que vamos criar hoje?' };
+
 export const AIChat: React.FC<AIChatProps> = ({ settings, t }) => {
-  const [messages, setMessages] = useLocalStorage<Message[]>('inkwell-chat-history', [
-    { role: 'model', text: 'Olá! Eu sou Muse, sua assistente de escrita criativa. Estou aqui para ajudar você a dar vida às suas histórias. O que vamos criar hoje?' }
-  ]);
+  const [messages, setMessages] = useLocalStorage<Message[]>('inkwell-chat-history', [INITIAL_MESSAGE]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [responseLength, setResponseLength] = useState<'fast' | 'detailed'>('fast');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [hasUserSentMessage, setHasUserSentMessage] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // Verifica se já existe mensagem do usuário no histórico
+    const userMsgExists = messages.some(m => m.role === 'user');
+    setHasUserSentMessage(userMsgExists);
+  }, []);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -46,7 +53,9 @@ export const AIChat: React.FC<AIChatProps> = ({ settings, t }) => {
     const messageText = text || input.trim();
     if (!messageText || isLoading) return;
 
-    const userMessage = { role: 'user' as const, text: messageText };
+    setHasUserSentMessage(true);
+
+    const userMessage: Message = { role: 'user', text: messageText };
     const updatedMessages = [...messages, userMessage];
     
     setMessages([...updatedMessages, { role: 'model', text: "" }]);
@@ -76,7 +85,7 @@ export const AIChat: React.FC<AIChatProps> = ({ settings, t }) => {
         fullResponse += textChunk;
         setMessages(prev => {
           const newMsgs = [...prev];
-          newMsgs[newMsgs.length - 1].text = fullResponse;
+          newMsgs[newMsgs.length - 1] = { role: 'model', text: fullResponse };
           return newMsgs;
         });
       }
@@ -89,7 +98,8 @@ export const AIChat: React.FC<AIChatProps> = ({ settings, t }) => {
   };
 
   const clearChat = () => {
-    setMessages([{ role: 'model', text: 'Olá! Estou pronta para uma nova jornada criativa. Como posso ajudar?' }]);
+    setMessages([INITIAL_MESSAGE]);
+    setHasUserSentMessage(false);
     setShowDeleteConfirm(false);
   };
 
@@ -132,11 +142,19 @@ export const AIChat: React.FC<AIChatProps> = ({ settings, t }) => {
             </div>
           </div>
         ))}
+        {isLoading && messages[messages.length - 1]?.text === "" && (
+          <div className="flex justify-start">
+            <div className="bg-[var(--card)] border border-[var(--border)] p-4 rounded-2xl rounded-tl-none flex gap-3 items-center">
+              <Bot size={18} className="text-[var(--accent)]" />
+              <Loader2 className="animate-spin text-[var(--accent)]" size={18} />
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="p-4 bg-[var(--card)] border-t border-[var(--border)]">
         <div className="max-w-4xl mx-auto space-y-4">
-          {messages.length <= 1 && !isLoading && (
+          {!hasUserSentMessage && !isLoading && (
             <div className="flex flex-wrap gap-2">
               {SUGGESTIONS.map((s, i) => (
                 <button key={i} onClick={() => handleSend(s)} className="text-xs px-3 py-1.5 bg-[var(--bg)] border border-[var(--border)] rounded-full hover:border-[var(--accent)] transition-all">
@@ -172,7 +190,3 @@ export const AIChat: React.FC<AIChatProps> = ({ settings, t }) => {
             </div>
           </div>
         </div>
-      )}
-    </div>
-  );
-};
