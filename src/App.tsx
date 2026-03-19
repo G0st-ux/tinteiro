@@ -85,6 +85,7 @@ export default function App() {
     if (characters.length === 0) {
       const borrao: Character = {
         id: 'borrao-oficial',
+        imageUrl: '/borrao.png',
         basicInfo: {
           name: 'Borrão',
           nickname: 'O Demônio do Tinteiro',
