@@ -33,7 +33,6 @@ export const BuscaUsuarios: React.FC<BuscaUsuariosProps> = ({ usuario, t }) => {
 
   const buscarSugestoes = async () => {
     try {
-      // Buscar usuários populares (simulado por limite, já que não temos contagem real fácil sem rpc)
       const { data, error } = await supabase
         .from('usuarios')
         .select('*')
@@ -42,9 +41,29 @@ export const BuscaUsuarios: React.FC<BuscaUsuariosProps> = ({ usuario, t }) => {
         .limit(10);
 
       if (error) throw error;
-      
-      // Para cada sugestão, vamos buscar contagem de histórias e seguidores (opcional se as tabelas permitirem)
-      setSugestoes(data || []);
+
+      const usuariosComContagem = await Promise.all(
+        (data || []).map(async (u) => {
+          const [{ count: seguidores_count }, { count: historias_count }] = await Promise.all([
+            supabase
+              .from('seguidores')
+              .select('*', { count: 'exact', head: true })
+              .eq('seguido_id', u.id),
+            supabase
+              .from('historias')
+              .select('*', { count: 'exact', head: true })
+              .eq('autor_id', u.id)
+          ]);
+
+          return {
+            ...u,
+            seguidores_count: seguidores_count || 0,
+            historias_count: historias_count || 0,
+          };
+        })
+      );
+
+      setSugestoes(usuariosComContagem);
     } catch (err) {
       console.error('Erro ao buscar sugestões:', err);
     } finally {
@@ -64,7 +83,6 @@ export const BuscaUsuarios: React.FC<BuscaUsuariosProps> = ({ usuario, t }) => {
       setSeguindoIds(new Set(data.map(s => s.seguido_id)));
     } catch (err: any) {
       console.error('Erro ao buscar seguindo:', err);
-      // Não alertar aqui para não atrapalhar o carregamento inicial, mas logar detalhado
     }
   };
 
@@ -90,7 +108,29 @@ export const BuscaUsuarios: React.FC<BuscaUsuariosProps> = ({ usuario, t }) => {
         .limit(20);
 
       if (error) throw error;
-      setResultados(data || []);
+
+      const usuariosComContagem = await Promise.all(
+        (data || []).map(async (u) => {
+          const [{ count: seguidores_count }, { count: historias_count }] = await Promise.all([
+            supabase
+              .from('seguidores')
+              .select('*', { count: 'exact', head: true })
+              .eq('seguido_id', u.id),
+            supabase
+              .from('historias')
+              .select('*', { count: 'exact', head: true })
+              .eq('autor_id', u.id)
+          ]);
+
+          return {
+            ...u,
+            seguidores_count: seguidores_count || 0,
+            historias_count: historias_count || 0,
+          };
+        })
+      );
+
+      setResultados(usuariosComContagem);
     } catch (err) {
       console.error('Erro ao buscar usuários:', err);
     } finally {
@@ -113,7 +153,6 @@ export const BuscaUsuarios: React.FC<BuscaUsuariosProps> = ({ usuario, t }) => {
     const meuId = usuario?.id || (usuario as any)?.uid;
     
     if (!meuId) return;
-
     if (processandoId) return;
     setProcessandoId(alvo.id);
     
