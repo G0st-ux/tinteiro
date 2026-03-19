@@ -25,7 +25,6 @@ import { Usuario } from './services/supabase';
 import { THEMES, TRANSLATIONS } from './constants';
 import { useNavigate } from 'react-router-dom';
 
-// Placeholder components for other pages
 const Placeholder = ({ title }: { title: string }) => (
   <div className="flex flex-col items-center justify-center h-[60vh] fade-in">
     <h1 className="text-4xl font-bold font-serif mb-4">{title}</h1>
@@ -46,14 +45,7 @@ function AppContent({
       <main className="flex-1 lg:ml-64 p-6 lg:p-12 max-w-7xl mx-auto w-full transition-all">
         <Routes>
           <Route path="/" element={<Dashboard t={t} stories={stories} characters={characters} usuario={usuario} />} />
-          <Route path="/settings" element={
-            <SettingsPage 
-              settings={settings} 
-              setSettings={setSettings} 
-              t={t} 
-              usuario={usuario}
-            />
-          } />
+          <Route path="/settings" element={<SettingsPage settings={settings} setSettings={setSettings} t={t} usuario={usuario} />} />
           <Route path="/editor" element={<Editor stories={stories} setStories={setStories} settings={settings} t={t} />} />
           <Route path="/library" element={<Library stories={stories} setStories={setStories} t={t} />} />
           <Route path="/characters" element={<Characters settings={settings} characters={characters} setCharacters={setCharacters} t={t} />} />
@@ -64,30 +56,17 @@ function AppContent({
           <Route path="/perfil" element={<ProfilePage usuario={usuario} setUsuario={setUsuario} t={t} />} />
           <Route path="/notificacoes" element={<Notificacoes usuario={usuario} t={t} />} />
           <Route path="/buscar" element={<BuscaUsuarios usuario={usuario} t={t} />} />
-          
           <Route path="/salas" element={
             salaAtiva ? (
-              <SalaColaborativa 
-                sala={salaAtiva} 
-                usuario={usuario} 
-                onVoltar={() => setSalaAtiva(null)} 
-                t={t} 
-              />
+              <SalaColaborativa sala={salaAtiva} usuario={usuario} onVoltar={() => setSalaAtiva(null)} t={t} />
             ) : (
-              <SalasColaborativas 
-                usuario={usuario} 
-                t={t} 
-                onEntrarSala={setSalaAtiva} 
-              />
+              <SalasColaborativas usuario={usuario} t={t} onEntrarSala={setSalaAtiva} />
             )
           } />
-          
-          {/* Story System Routes */}
           <Route path="/minhas-historias" element={<MinhasHistorias usuario={usuario} t={t} onVerCapitulos={(h) => navigate(`/minhas-historias/${h.id}/capitulos`)} />} />
           <Route path="/minhas-historias/:id/capitulos" element={<Capitulos usuario={usuario} t={t} />} />
           <Route path="/explorar" element={<Biblioteca t={t} onVerHistoria={(h) => navigate(`/leitor/${h.id}`)} />} />
           <Route path="/leitor/:id" element={<LeitorHistoria usuario={usuario} t={t} />} />
-          
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
@@ -103,111 +82,135 @@ export default function App() {
   const [locations, setLocations] = useLocalStorage<Location[]>('inkwell-locations', []);
 
   useEffect(() => {
-    // Initialize with example data if empty
-    if (characters.length === 0 && stories.length === 0 && locations.length === 0) {
-      const exampleChar: Character = {
-        id: 'ex1',
+    if (characters.length === 0) {
+      const borrao: Character = {
+        id: 'borrao-oficial',
         basicInfo: {
-          name: 'Elowen Starweaver',
-          nickname: 'El',
-          age: '124',
-          birthDate: 'Desconhecida',
-          gender: 'Feminino',
-          species: 'Elfa',
-          height: '1.75m',
-          weight: '60kg',
-          nationality: 'Floresta Sagrada',
-          occupation: 'Guardiã',
-          role: 'Protagonista',
+          name: 'Borrão',
+          nickname: 'O Demônio do Tinteiro',
+          age: 'Tão antigo quanto a primeira palavra escrita',
+          birthDate: 'No dia em que a primeira gota de tinta tocou o papel',
+          gender: 'Indefinido',
+          species: 'Entidade de Tinta',
+          height: 'Varia conforme a quantidade de tinta disponível',
+          weight: 'Depende de quantas histórias carrega consigo',
+          nationality: 'O reino das histórias não contadas',
+          occupation: 'Guardião do Tinteiro',
+          role: 'Antagonista',
         },
         appearance: {
-          hairColor: 'Prateado',
-          hairStyle: 'Longo e ondulado',
-          eyeColor: 'Violeta',
-          skinTone: 'Pálida',
-          features: [{ name: 'Orelhas pontiagudas', description: '' }, { name: 'tatuagem de runa no pulso', description: '' }],
-          clothingStyle: 'Vestes de seda azul',
-          posture: 'Nobre',
-          firstImpression: 'Misteriosa e sábia',
+          hairColor: 'Preto — feito de tinta sólida',
+          hairStyle: 'Chifres curvados de tinta, sem cabelo convencional',
+          eyeColor: 'Branco vazio — sem pupilas visíveis',
+          skinTone: 'Negro como tinta — corpo inteiramente feito de tinta',
+          features: [
+            { name: 'Sorriso largo com dentes afiados', description: 'Seu sorriso nunca some, mesmo quando dorme' },
+            { name: 'Tinta pingando pelo corpo', description: 'Deixa rastros de tinta por onde passa' },
+            { name: 'Olhos brancos sem pupilas', description: 'Enxerga através das histórias, não pelos olhos' },
+            { name: 'Chifres de tinta', description: 'Crescem e diminuem conforme seu humor' },
+            { name: 'Cauda de demônio', description: 'Usa para escrever quando não tem pena disponível' },
+          ],
+          clothingStyle: 'Nenhuma — seu corpo é a própria tinta',
+          posture: 'Intimidador, sempre inclinado para frente como se fosse atacar, mas com ar de deboche',
+          firstImpression: 'Assustador e perturbador — aquele sorriso não some nem quando dorme',
         },
         personality: {
           traits: [
-            { name: 'Sábia', description: 'Possui séculos de conhecimento acumulado.' },
-            { name: 'Melancólica', description: 'Sente falta da glória passada de seu povo.' },
-            { name: 'Determinada', description: 'Não descansará até cumprir sua missão.' }
+            { name: 'Perturbador', description: 'Causa desconforto em todos que o encontram' },
+            { name: 'Sarcástico', description: 'Sempre tem uma resposta afiada na ponta da língua' },
+            { name: 'Imprevisível', description: 'Ninguém sabe o que vai fazer no próximo momento' },
+            { name: 'Obsessivo com histórias', description: 'Não consegue resistir a uma boa narrativa' },
           ],
-          virtues: [{ name: 'Lealdade inabalável', description: '' }],
-          defects: [{ name: 'Dificuldade em confiar em humanos', description: '' }],
-          habits: [{ name: 'Observar as estrelas', description: 'Faz isso todas as noites para se conectar com seus ancestrais.' }],
-          fears: [{ name: 'Escuridão', description: 'A escuridão que consome as florestas e apaga a luz estelar.' }],
-          deepDesires: [{ name: 'Restaurar a luz de seu povo', description: '' }],
-          motivation: 'Vingar a destruição de seu bosque sagrado',
-          trigger: 'Desrespeito à natureza',
+          virtues: [{ name: 'Leal aos escritores que o invocam', description: 'Uma vez que reconhece um escritor verdadeiro, jamais o abandona' }],
+          defects: [{ name: 'Consome histórias inacabadas', description: 'Não consegue resistir a absorver narrativas abandonadas' }],
+          habits: [{ name: 'Aparecer quando alguém tem bloqueio criativo', description: 'Sente o bloqueio criativo como uma dor física e aparece para ajudar ou atormentar' }],
+          fears: [{ name: 'Páginas em branco', description: 'A ausência de palavras o paralisa completamente' }],
+          deepDesires: [{ name: 'Que todas as histórias sejam escritas', description: 'Seu maior desejo é que nenhuma história morra sem ser contada' }],
+          motivation: 'Garantir que nenhuma história morra sem ser contada',
+          trigger: 'Ver um escritor desistir de sua história',
         },
         psychology: {
-          trauma: 'Destruição de seu bosque',
-          dream: 'Paz eterna',
-          secret: 'Possui a última semente da Árvore da Vida',
-          neverAdmit: 'Sente-se sozinha',
-          pressureReaction: 'Fica calma e analítica',
-          intelligenceType: 'Estratégica',
+          trauma: 'O dia em que um escritor queimou seu manuscrito — apagando a história para sempre',
+          dream: 'Ver todas as histórias do mundo escritas e preservadas eternamente',
+          secret: 'No fundo, ele sente solidão — existe há milênios mas nunca foi o protagonista de nenhuma história',
+          neverAdmit: 'Que se importa com os escritores que ajuda',
+          pressureReaction: 'Fica mais sombrio e intenso — sua tinta escurece e ele começa a pingar mais',
+          intelligenceType: 'Narrativa — entende instintivamente a estrutura de qualquer história',
         },
         skills: {
-          talents: [{ name: 'Magia natural', description: 'Conexão profunda com a flora e fauna.' }],
-          trainedSkills: [{ name: 'Arco e flecha', description: 'Precisão milimétrica a longas distâncias.' }],
-          weaknesses: [{ name: 'Fogo', description: 'Sua magia é vulnerável a chamas intensas.' }],
-          powers: [{ name: 'Arco de luz', description: 'Cria um arco feito de pura energia estelar.' }],
-          experienceLevel: 'Veterana',
+          talents: [
+            { name: 'Manipular tinta', description: 'Consegue controlar tinta de qualquer fonte, moldando-a em formas, palavras ou armas' },
+            { name: 'Invocar histórias esquecidas', description: 'Traz de volta narrativas perdidas, esquecidas ou destruídas ao longo da história' },
+            { name: 'Aparecer nos sonhos de escritores', description: 'Visita escritores enquanto dormem, plantando ideias e inspiração em suas mentes' },
+          ],
+          trainedSkills: [
+            { name: 'Escrever por conta própria', description: 'Consegue pegar uma pena e escrever histórias sem precisar de um escritor humano' },
+            { name: 'Corromper histórias inacabadas', description: 'Quando uma história é abandonada, ele a absorve e a transforma em algo sombrio' },
+          ],
+          weaknesses: [
+            { name: 'Páginas em branco', description: 'O paralisam completamente — a ausência de palavras é sua maior fraqueza' },
+            { name: 'Fogo', description: 'As chamas destroem a tinta que forma seu corpo, sendo sua única vulnerabilidade física' },
+          ],
+          powers: [
+            { name: 'Materializar personagens', description: 'Traz personagens de histórias para o mundo real temporariamente' },
+            { name: 'Viajar entre narrativas', description: 'Consegue entrar e sair de qualquer história como se fossem portais' },
+            { name: 'Tinta infinita', description: 'Seu corpo produz tinta infinita, nunca secando nem acabando' },
+          ],
+          experienceLevel: 'Lendário',
         },
         history: {
-          lore: 'Elowen é a última de uma linhagem de guardiões estelares que protegiam o equilíbrio entre o mundo físico e o espiritual.',
-          childhood: 'Treinada pelos antigos guardiões',
-          lifeChangingEvent: 'Destruição do bosque',
-          family: 'Desconhecida',
-          mentors: [{ name: 'Antigos guardiões', description: 'Aqueles que a ensinaram tudo o que sabe.' }],
-          entryToMainStory: 'Encontrada na floresta',
+          lore: 'Borrão nasceu da primeira gota de tinta que tocou um pergaminho há milênios. É uma entidade feita de todas as histórias já escritas e de todas as que ainda esperam para ser contadas. Habita o espaço entre a imaginação e o papel, aparecendo apenas quando uma história corre o risco de nunca ser escrita.',
+          childhood: 'Não teve infância — surgiu já adulto, formado pela tinta e pelas palavras do primeiro escriba da humanidade.',
+          lifeChangingEvent: 'Testemunhou a queima da Biblioteca de Alexandria — milhares de histórias apagadas para sempre. Desde então jurou que nunca mais deixaria uma história morrer.',
+          family: 'A tinta é sua família. Cada história escrita é um parente seu.',
+          mentors: [{ name: 'O Primeiro Escriba', description: 'O ser que o criou sem saber' }],
+          entryToMainStory: 'Foi invocado quando o Tinteiro foi criado — uma plataforma dedicada a preservar histórias. Reconheceu o propósito e decidiu habitar o site como seu guardião.',
         },
         relationships: {
-          allies: [{ name: 'Guardiões', description: 'Seus antigos companheiros de ordem.' }],
-          rivals: [{ name: 'Sombras', description: 'Entidades que buscam apagar a luz estelar.' }],
-          loveInterest: 'Nenhum',
-          mostHated: [{ name: 'Destruidores', description: 'Aqueles que queimaram seu lar.' }],
-          mostTrusted: [{ name: 'Guardiões', description: 'Sua única família restante.' }],
+          allies: [
+            { name: 'Shakespeare', description: 'O maior contador de histórias da história' },
+            { name: 'Machado de Assis', description: 'Maior escritor brasileiro da história' },
+            { name: 'Clarice Lispector', description: 'Revolucionou a literatura brasileira' },
+            { name: 'Jorge Amado', description: 'Imortalizou a Bahia nas letras' },
+            { name: 'Jane Austen', description: 'Redefiniu o romance feminino' },
+            { name: 'Mary Shelley', description: 'Criou o primeiro romance de ficção científica' },
+            { name: 'Homero', description: 'Autor das primeiras grandes epopéias' },
+            { name: 'Dante Alighieri', description: 'Criou o inferno na literatura' },
+          ],
+          rivals: [
+            { name: 'O Silêncio', description: 'A entidade que representa o bloqueio criativo' },
+            { name: 'As Chamas', description: 'Força que destrói histórias' },
+          ],
+          loveInterest: 'Nenhum — é uma entidade além dos sentimentos mortais',
+          mostHated: [
+            { name: 'Os Censores', description: 'Aqueles que proíbem e destroem histórias' },
+            { name: 'Os Procrastinadores', description: 'Escritores que abandonam suas histórias' },
+          ],
+          mostTrusted: [
+            { name: 'O Primeiro Escriba', description: 'O ser que o criou' },
+            { name: 'Os Guardiões das Bibliotecas', description: 'Aqueles que preservam histórias' },
+          ],
         },
         development: {
-          initialGoal: 'Vingança',
-          internalConflict: 'Dever vs. Vingança',
-          change: 'Aprende a perdoar',
-          finalSelf: 'Líder pacífica',
+          initialGoal: 'Garantir que todas as histórias do Tinteiro sejam escritas e preservadas',
+          internalConflict: 'Ele existe para servir às histórias, mas no fundo deseja ter sua própria história contada',
+          change: 'Aprende que não precisa apenas guardar histórias alheias — ele mesmo pode ser o protagonista de uma',
+          finalSelf: 'O maior personagem já criado — aquele que existiu em todas as histórias ao mesmo tempo',
         },
         extras: {
-          catchphrase: 'Que a luz nos guie',
-          themeSong: 'Melodia da Floresta',
-          favoriteFood: 'Frutas silvestres',
-          favoriteColor: 'Azul',
-          insignificantThing: 'Borboletas',
+          catchphrase: 'Toda história merece ser contada — especialmente as que você tem medo de escrever.',
+          themeSong: 'Danse Macabre — Saint-Saëns',
+          favoriteFood: 'Tinta — literalmente',
+          favoriteColor: 'Preto absoluto — a cor da tinta antes de virar palavra',
+          insignificantThing: 'O som de uma pena raspando o papel',
         },
         tags: [
-          { name: 'elfa', description: '' },
-          { name: 'magia', description: '' },
-          { name: 'protagonista', description: '' }
+          { name: 'Demônio', description: '' },
+          { name: 'anti-herói', description: '' },
         ],
       };
 
-      const exampleLoc: Location = {
-        id: 'loc1',
-        name: 'Valfenda Prateada',
-        type: 'Cidade',
-        description: 'Uma cidade esculpida em cristal e mármore, escondida entre montanhas.',
-        climate: 'Eterna primavera',
-        inhabitants: 'Elfos e seres feéricos',
-        pointsOfInterest: 'O Observatório de Estrelas, A Fonte da Juventude',
-        connections: [],
-        imageUrl: 'https://picsum.photos/seed/fantasy-city/800/450'
-      };
-
-      setCharacters([exampleChar]);
-      setLocations([exampleLoc]);
+      setCharacters([borrao]);
     }
   }, []);
 
@@ -221,7 +224,6 @@ export default function App() {
     root.style.setProperty('--text', activeTheme.text);
     root.style.setProperty('--accent', activeTheme.accent);
     root.style.setProperty('--border', activeTheme.border);
-    
     if (activeTheme.isDark) {
       root.classList.add('dark');
     } else {
