@@ -1,6 +1,7 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Sidebar } from './components/Sidebar';
+import { TopBar } from './components/TopBar';
 import { Dashboard } from './pages/Dashboard';
 import { SettingsPage } from './pages/SettingsPage';
 import { Editor } from './pages/Editor';
@@ -25,6 +26,7 @@ import { Usuario } from './services/supabase';
 import { THEMES, TRANSLATIONS } from './constants';
 import { useNavigate } from 'react-router-dom';
 
+// Placeholder components for other pages
 const Placeholder = ({ title }: { title: string }) => (
   <div className="flex flex-col items-center justify-center h-[60vh] fade-in">
     <h1 className="text-4xl font-bold font-serif mb-4">{title}</h1>
@@ -37,36 +39,66 @@ function AppContent({
 }: any) {
   const navigate = useNavigate();
   const [salaAtiva, setSalaAtiva] = React.useState<any>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
 
   return (
     <div className={`min-h-screen flex ${settings.compactMode ? 'compact-mode' : ''}`}>
-      <Sidebar usuario={usuario} settings={settings} setSettings={setSettings} t={t} onLogout={() => setUsuario(null)} />
+      <TopBar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
+      <Sidebar 
+        usuario={usuario} 
+        settings={settings} 
+        setSettings={setSettings} 
+        t={t} 
+        onLogout={() => setUsuario(null)} 
+        isOpen={isSidebarOpen}
+        setIsOpen={setIsSidebarOpen}
+      />
       
-      <main className="flex-1 lg:ml-64 p-6 lg:p-12 max-w-7xl mx-auto w-full transition-all">
+      <main className="flex-1 lg:ml-64 p-6 lg:p-12 max-w-7xl mx-auto w-full transition-all pt-20 lg:pt-12">
         <Routes>
           <Route path="/" element={<Dashboard t={t} stories={stories} characters={characters} usuario={usuario} />} />
-          <Route path="/settings" element={<SettingsPage settings={settings} setSettings={setSettings} t={t} usuario={usuario} />} />
+          <Route path="/settings" element={
+            <SettingsPage 
+              settings={settings} 
+              setSettings={setSettings} 
+              t={t} 
+              usuario={usuario}
+            />
+          } />
           <Route path="/editor" element={<Editor stories={stories} setStories={setStories} settings={settings} t={t} />} />
           <Route path="/library" element={<Library stories={stories} setStories={setStories} t={t} />} />
           <Route path="/characters" element={<Characters settings={settings} characters={characters} setCharacters={setCharacters} t={t} />} />
-          <Route path="/ai-chat" element={<AIChat settings={settings} t={t} />} />
+          <Route path="/ai-chat" element={<AIChat settings={settings} t={t} characters={characters} stories={stories} />} />
           <Route path="/world" element={<World settings={settings} locations={locations} setLocations={setLocations} t={t} />} />
           <Route path="/generator" element={<StoryGenerator settings={settings} stories={stories} setStories={setStories} t={t} />} />
           <Route path="/image-gen" element={<ImageGenerator settings={settings} characters={characters} setCharacters={setCharacters} t={t} />} />
           <Route path="/perfil" element={<ProfilePage usuario={usuario} setUsuario={setUsuario} t={t} />} />
           <Route path="/notificacoes" element={<Notificacoes usuario={usuario} t={t} />} />
           <Route path="/buscar" element={<BuscaUsuarios usuario={usuario} t={t} />} />
+          
           <Route path="/salas" element={
             salaAtiva ? (
-              <SalaColaborativa sala={salaAtiva} usuario={usuario} onVoltar={() => setSalaAtiva(null)} t={t} />
+              <SalaColaborativa 
+                sala={salaAtiva} 
+                usuario={usuario} 
+                onVoltar={() => setSalaAtiva(null)} 
+                t={t} 
+              />
             ) : (
-              <SalasColaborativas usuario={usuario} t={t} onEntrarSala={setSalaAtiva} />
+              <SalasColaborativas 
+                usuario={usuario} 
+                t={t} 
+                onEntrarSala={setSalaAtiva} 
+              />
             )
           } />
+          
+          {/* Story System Routes */}
           <Route path="/minhas-historias" element={<MinhasHistorias usuario={usuario} t={t} onVerCapitulos={(h) => navigate(`/minhas-historias/${h.id}/capitulos`)} />} />
           <Route path="/minhas-historias/:id/capitulos" element={<Capitulos usuario={usuario} t={t} />} />
           <Route path="/explorar" element={<Biblioteca t={t} onVerHistoria={(h) => navigate(`/leitor/${h.id}`)} />} />
           <Route path="/leitor/:id" element={<LeitorHistoria usuario={usuario} t={t} />} />
+          
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
@@ -82,10 +114,11 @@ export default function App() {
   const [locations, setLocations] = useLocalStorage<Location[]>('inkwell-locations', []);
 
   useEffect(() => {
+    // Initialize with Borrão if empty
     if (characters.length === 0) {
       const borrao: Character = {
         id: 'borrao-oficial',
-        imageUrl: '/borrao.png',
+        imageUrl: 'https://raw.githubusercontent.com/G0st-ux/assets/main/assets/borrao.png',
         basicInfo: {
           name: 'Borrão',
           nickname: 'O Demônio do Tinteiro',
@@ -225,6 +258,7 @@ export default function App() {
     root.style.setProperty('--text', activeTheme.text);
     root.style.setProperty('--accent', activeTheme.accent);
     root.style.setProperty('--border', activeTheme.border);
+    
     if (activeTheme.isDark) {
       root.classList.add('dark');
     } else {

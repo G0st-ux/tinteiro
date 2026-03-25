@@ -15,10 +15,11 @@ interface SidebarProps {
   setSettings: (s: AppSettings) => void;
   t: any;
   onLogout: () => void;
+  isOpen: boolean;
+  setIsOpen: (isOpen: boolean) => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ usuario, settings, setSettings, t, onLogout }) => {
-  const [isOpen, setIsOpen] = useState(false);
+export const Sidebar: React.FC<SidebarProps> = ({ usuario, settings, setSettings, t, onLogout, isOpen, setIsOpen }) => {
   const [showThemePicker, setShowThemePicker] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -62,18 +63,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ usuario, settings, setSettings
     { to: "/settings", icon: Settings, label: t.settings },
   ];
 
-  const activeTheme = THEMES[settings.theme as keyof typeof THEMES] || THEMES.midnight;
-
   return (
     <>
-      {/* Mobile Toggle */}
-      <button 
-        className="lg:hidden fixed top-4 right-4 z-50 p-2 bg-[var(--card)] border border-[var(--border)] rounded-lg"
-        onClick={() => setIsOpen(!isOpen)}
-      >
-        {isOpen ? <X size={24} /> : <Menu size={24} />}
-      </button>
-
       {/* Sidebar */}
       <aside className={`
         fixed top-0 left-0 h-full z-40 bg-[var(--card)] border-r border-[var(--border)] transition-transform duration-300
