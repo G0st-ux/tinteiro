@@ -1,206 +1,180 @@
 import React, { useState } from 'react';
-import { supabase, Usuario } from '../services/supabase';
-import { LogIn, UserPlus, Mail, Lock, User, Sparkles, Loader2 } from 'lucide-react';
-import { motion } from 'motion/react';
+import { loginWithGoogle, UserProfile } from '../firebase';
+import { LogIn, Sparkles, Loader2, PenTool, Globe, BookOpen, Feather } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 
 interface AuthPageProps {
-  onLogin: (user: Usuario) => void;
+  onLogin: (user: UserProfile) => void;
 }
 
 export const AuthPage: React.FC<AuthPageProps> = ({ onLogin }) => {
-  const [isLogin, setIsLogin] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [formData, setFormData] = useState({
-    nome: '',
-    email: '',
-    senha: ''
-  });
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleGoogleLogin = async () => {
     setIsLoading(true);
     setError(null);
-
     try {
-      if (isLogin) {
-        // Login direto na tabela usuarios (conforme solicitado, sem criptografia por agora)
-        const { data, error: loginError } = await supabase
-          .from('usuarios')
-          .select('*')
-          .eq('email', formData.email)
-          .eq('senha', formData.senha)
-          .maybeSingle();
-
-        if (loginError) {
-          console.error('Erro detalhado do Supabase (Login):', loginError);
-          throw new Error(`Erro ao entrar: ${loginError.message}`);
-        }
-
-        if (!data) {
-          throw new Error('Email ou senha incorretos.');
-        }
-
-        if (data.banido) {
-          throw new Error('Este usuário está banido.');
-        }
-
-        onLogin(data as Usuario);
-      } else {
-        // Cadastro
-        if (!formData.nome || !formData.email || !formData.senha) {
-          throw new Error('Preencha todos os campos.');
-        }
-
-        // Verificar se já existe
-        const { data: existing, error: checkError } = await supabase
-          .from('usuarios')
-          .select('id')
-          .eq('email', formData.email)
-          .maybeSingle();
-
-        if (checkError) {
-          console.error('Erro ao verificar usuário existente:', checkError);
-        }
-
-        if (existing) {
-          throw new Error('Este email já está cadastrado.');
-        }
-
-        const newUser = {
-          nome: formData.nome,
-          email: formData.email,
-          senha: formData.senha,
-          idioma: 'pt',
-          banido: false,
-          criado_em: new Date().toISOString(),
-          foto: '',
-          bio: ''
-        };
-
-        const { data, error: registerError } = await supabase
-          .from('usuarios')
-          .insert([newUser])
-          .select()
-          .single();
-
-        if (registerError) {
-          console.error('Erro detalhado do Supabase (Cadastro):', registerError);
-          throw new Error(`Erro ao cadastrar: ${registerError.message}`);
-        }
-
-        if (!data) {
-          throw new Error('Erro ao cadastrar usuário: Nenhum dado retornado.');
-        }
-
-        onLogin(data as Usuario);
-      }
+      await loginWithGoogle();
     } catch (err: any) {
-      console.error('Erro capturado no handleSubmit:', err);
-      setError(err.message);
-    } finally {
+      setError("Não foi possível realizar o login. Tente novamente.");
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[var(--bg)] p-4">
+    <div className="min-h-screen flex items-center justify-center bg-[#050505] overflow-hidden relative font-serif">
+      {/* Immersive Background */}
+      <div className="absolute inset-0 z-0">
+        <motion.img 
+          initial={{ scale: 1.1, opacity: 0 }}
+          animate={{ scale: 1, opacity: 0.15 }}
+          transition={{ duration: 2, ease: "easeOut" }}
+          src="https://images.unsplash.com/photo-1455390582262-044cdead277a?auto=format&fit=crop&q=80&w=1920" 
+          alt="Writing Background" 
+          className="w-full h-full object-cover"
+          referrerPolicy="no-referrer"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#050505] via-transparent to-[#050505]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,#050505_80%)]" />
+      </div>
+
+      {/* Atmospheric Glows */}
       <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="max-w-md w-full bg-[var(--card)] border border-[var(--border)] rounded-3xl p-8 shadow-2xl space-y-8"
-      >
-        <div className="text-center space-y-2">
-          <div className="flex justify-center">
-            <div className="p-3 bg-[var(--accent)] rounded-2xl text-white">
-              <Sparkles size={32} />
+        animate={{ 
+          scale: [1, 1.2, 1],
+          opacity: [0.1, 0.2, 0.1],
+          x: [0, 50, 0],
+          y: [0, -30, 0]
+        }}
+        transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+        className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-accent/20 blur-[150px] rounded-full" 
+      />
+      <motion.div 
+        animate={{ 
+          scale: [1.2, 1, 1.2],
+          opacity: [0.1, 0.15, 0.1],
+          x: [0, -50, 0],
+          y: [0, 30, 0]
+        }}
+        transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
+        className="absolute bottom-1/4 right-1/4 w-[600px] h-[600px] bg-purple-900/20 blur-[180px] rounded-full" 
+      />
+
+      <div className="max-w-5xl w-full px-6 relative z-10 grid lg:grid-cols-2 gap-12 items-center">
+        {/* Left Side: Brand & Vision */}
+        <div className="hidden lg:block space-y-8">
+          <motion.div
+            initial={{ opacity: 0, x: -50 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 1, delay: 0.2 }}
+          >
+            <div className="inline-flex items-center gap-3 px-4 py-2 rounded-full border border-white/10 bg-white/5 backdrop-blur-md mb-6">
+              <Sparkles size={14} className="text-accent" />
+              <span className="text-[10px] uppercase tracking-[0.3em] font-sans text-white/60">Versão 2.0 • Premium</span>
             </div>
-          </div>
-          <h1 className="text-3xl font-bold font-serif">Inkwell</h1>
-          <p className="opacity-60 text-sm">
-            {isLogin ? 'Bem-vindo de volta, escritor.' : 'Comece sua jornada literária.'}
-          </p>
+            <h1 className="text-8xl font-black tracking-tighter text-white leading-none mb-6">
+              INK<span className="text-accent">WELL</span>
+            </h1>
+            <p className="text-2xl text-white/60 leading-relaxed max-w-md italic">
+              "As palavras são a única coisa que sobrevive ao tempo. No Inkwell, nós as tornamos imortais."
+            </p>
+          </motion.div>
+
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1, duration: 1 }}
+            className="grid grid-cols-2 gap-8 pt-12 border-t border-white/5"
+          >
+            <div className="space-y-2">
+              <h3 className="text-accent font-sans font-bold text-xs uppercase tracking-widest">Escrita IA</h3>
+              <p className="text-white/40 text-sm">Co-autoria inteligente para superar qualquer bloqueio.</p>
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-accent font-sans font-bold text-xs uppercase tracking-widest">Biblioteca</h3>
+              <p className="text-white/40 text-sm">Organize seu universo literário com elegância absoluta.</p>
+            </div>
+          </motion.div>
         </div>
 
-        {error && (
-          <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-500 text-sm rounded-xl text-center">
-            {error}
-          </div>
-        )}
+        {/* Right Side: Login Card */}
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9, rotateY: 15 }}
+          animate={{ opacity: 1, scale: 1, rotateY: 0 }}
+          transition={{ duration: 1, ease: "easeOut" }}
+          className="perspective-1000"
+        >
+          <div className="glass-dark p-10 lg:p-14 rounded-[3rem] border border-white/10 shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5)] relative overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-br from-accent/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
+            
+            <div className="relative z-10 space-y-10">
+              <div className="text-center lg:text-left space-y-4">
+                <div className="lg:hidden inline-flex w-16 h-16 bg-accent rounded-2xl items-center justify-center mb-6 shadow-2xl shadow-accent/20">
+                  <PenTool size={28} className="text-black" />
+                </div>
+                <h2 className="text-4xl font-bold text-white tracking-tight">Bem-vindo de volta</h2>
+                <p className="text-white/40 text-sm font-sans tracking-wide">Inicie sua sessão para continuar sua obra-prima.</p>
+              </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {!isLogin && (
-            <div className="space-y-1">
-              <label className="text-xs font-bold uppercase opacity-50 ml-1">Nome</label>
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 opacity-30" size={18} />
-                <input 
-                  type="text"
-                  required
-                  value={formData.nome}
-                  onChange={e => setFormData({ ...formData, nome: e.target.value })}
-                  placeholder="Seu nome"
-                  className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-xl pl-10 pr-4 py-3 focus:border-[var(--accent)] outline-none transition-all"
-                />
+              <AnimatePresence mode="wait">
+                {error && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="p-4 bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded-2xl text-center font-sans"
+                  >
+                    {error}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <div className="space-y-4">
+                <button 
+                  onClick={handleGoogleLogin}
+                  disabled={isLoading}
+                  className="w-full group/btn relative flex items-center justify-center gap-4 py-5 bg-white text-black rounded-2xl font-bold text-sm transition-all duration-500 hover:bg-accent hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 overflow-hidden shadow-xl"
+                >
+                  <div className="relative z-10 flex items-center gap-4">
+                    {isLoading ? (
+                      <Loader2 className="animate-spin" size={20} />
+                    ) : (
+                      <>
+                        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />
+                        <span className="font-sans uppercase tracking-wider">Entrar com Google</span>
+                      </>
+                    )}
+                  </div>
+                </button>
+                
+                <p className="text-center text-[10px] text-white/20 font-sans uppercase tracking-[0.2em] pt-4">
+                  Ao entrar, você concorda com nossos termos de serviço.
+                </p>
+              </div>
+
+              <div className="flex justify-between items-center pt-8 border-t border-white/5 opacity-30 group-hover:opacity-60 transition-opacity duration-1000">
+                <Feather size={20} className="text-white" />
+                <div className="w-12 h-[1px] bg-white/20" />
+                <BookOpen size={20} className="text-white" />
+                <div className="w-12 h-[1px] bg-white/20" />
+                <Globe size={20} className="text-white" />
               </div>
             </div>
-          )}
-
-          <div className="space-y-1">
-            <label className="text-xs font-bold uppercase opacity-50 ml-1">Email</label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 opacity-30" size={18} />
-              <input 
-                type="email"
-                required
-                value={formData.email}
-                onChange={e => setFormData({ ...formData, email: e.target.value })}
-                placeholder="seu@email.com"
-                className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-xl pl-10 pr-4 py-3 focus:border-[var(--accent)] outline-none transition-all"
-              />
-            </div>
           </div>
+        </motion.div>
+      </div>
 
-          <div className="space-y-1">
-            <label className="text-xs font-bold uppercase opacity-50 ml-1">Senha</label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 opacity-30" size={18} />
-              <input 
-                type="password"
-                required
-                value={formData.senha}
-                onChange={e => setFormData({ ...formData, senha: e.target.value })}
-                placeholder="••••••••"
-                className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-xl pl-10 pr-4 py-3 focus:border-[var(--accent)] outline-none transition-all"
-              />
-            </div>
-          </div>
-
-          <button 
-            type="submit"
-            disabled={isLoading}
-            className="w-full py-4 bg-[var(--accent)] text-white rounded-xl font-bold text-lg flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-50 transition-all shadow-lg"
-          >
-            {isLoading ? (
-              <Loader2 className="animate-spin" size={20} />
-            ) : (
-              <>
-                {isLogin ? <LogIn size={20} /> : <UserPlus size={20} />}
-                {isLogin ? 'Entrar' : 'Cadastrar'}
-              </>
-            )}
-          </button>
-        </form>
-
-        <div className="text-center">
-          <button 
-            onClick={() => setIsLogin(!isLogin)}
-            className="text-sm opacity-60 hover:opacity-100 hover:text-[var(--accent)] transition-all"
-          >
-            {isLogin ? 'Não tem uma conta? Cadastre-se' : 'Já tem uma conta? Entre agora'}
-          </button>
-        </div>
+      {/* Footer Branding */}
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 1.5 }}
+        className="absolute bottom-10 left-0 right-0 flex justify-center items-center gap-8 opacity-20"
+      >
+        <div className="h-[1px] w-24 bg-gradient-to-r from-transparent to-white" />
+        <span className="text-[10px] uppercase tracking-[0.8em] font-sans">Santuário Literário</span>
+        <div className="h-[1px] w-24 bg-gradient-to-l from-transparent to-white" />
       </motion.div>
     </div>
   );

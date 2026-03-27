@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { GoogleGenAI } from "@google/genai";
 import { 
   Send, Bot, User, Loader2, Sparkles, Trash2, 
@@ -6,6 +6,8 @@ import {
   BrainCircuit, Paperclip, X, ChevronDown, Swords,
   ScrollText
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import ReactMarkdown from 'react-markdown';
 import { AppSettings, Character, Story } from '../types';
 
 interface AIChatProps {
@@ -79,10 +81,25 @@ export const AIChat: React.FC<AIChatProps> = ({ settings, t, characters = [], st
 
   const getSystemPrompt = () => {
     let prompt = currentPersonality.prompt;
-    if (responseLength === 'fast') prompt += ' Seja concisa e direta.';
-    else prompt += ' Seja detalhada, dê exemplos concretos e explique o raciocínio.';
+    prompt += "\n\nDIRETRIZES DE RESPOSTA (ESTRITAMENTE OBRIGATÓRIO):";
+    if (responseLength === 'fast') {
+      prompt += '\n- Responda de forma EXTREMAMENTE CURTA, CONCISA e DIRETA.';
+      prompt += '\n- NUNCA ultrapasse 2 parágrafos curtos.';
+      prompt += '\n- NUNCA use introduções como "Certamente!", "Com certeza!", "Aqui está..." ou "Como assistente...".';
+      prompt += '\n- Vá direto à resposta ou sugestão.';
+      prompt += '\n- Se for uma lista, limite a NO MÁXIMO 3 itens curtos.';
+      prompt += '\n- Priorize a velocidade e a brevidade absoluta.';
+    } else {
+      prompt += '\n- Responda de forma EXHAUSTIVA, DETALHADA e PROFUNDA.';
+      prompt += '\n- Use pelo menos 4-6 parágrafos bem estruturados.';
+      prompt += '\n- Forneça múltiplos exemplos práticos, diálogos de demonstração ou estruturas narrativas completas.';
+      prompt += '\n- Explique detalhadamente a teoria literária ou os conceitos por trás das suas sugestões.';
+      prompt += '\n- Use formatação Markdown rica (títulos, negrito, itálico, listas, blocos de citação, tabelas se necessário).';
+      prompt += '\n- Sinta-se à vontade para expandir o assunto e oferecer insights adicionais não solicitados mas relevantes.';
+    }
+    
     if (attachedContext) {
-      prompt += `\n\nO escritor compartilhou o seguinte contexto para esta conversa:\n[${attachedContext.type === 'character' ? 'PERSONAGEM' : 'HISTÓRIA'}]: ${attachedContext.name}\n${attachedContext.data}`;
+      prompt += `\n\nCONTEXTO DO USUÁRIO (USE ISSO PARA PERSONALIZAR A RESPOSTA):\n[${attachedContext.type === 'character' ? 'PERSONAGEM' : 'HISTÓRIA'}]: ${attachedContext.name}\n${attachedContext.data}`;
     }
     return prompt;
   };
@@ -93,7 +110,6 @@ export const AIChat: React.FC<AIChatProps> = ({ settings, t, characters = [], st
 
     const userMessage = { role: 'user' as const, text: messageText };
     
-    // Use functional update to ensure we have the latest state
     setMessages(prev => [...prev, userMessage, { role: 'model' as const, text: "" }]);
     setInput('');
     setIsLoading(true);
@@ -111,7 +127,12 @@ export const AIChat: React.FC<AIChatProps> = ({ settings, t, characters = [], st
           role: m.role,
           parts: [{ text: m.text }]
         })),
-        config: { systemInstruction: getSystemPrompt() }
+        config: { 
+          systemInstruction: getSystemPrompt(),
+          temperature: responseLength === 'fast' ? 0.7 : 1.0,
+          topP: 0.95,
+          topK: 40
+        }
       });
 
       for await (const chunk of stream) {
@@ -122,9 +143,15 @@ export const AIChat: React.FC<AIChatProps> = ({ settings, t, characters = [], st
           newMsgs[newMsgs.length - 1].text = fullResponse;
           return newMsgs;
         });
+        
+        // Auto-scroll while streaming
+        if (scrollRef.current) {
+          const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
+          if (scrollHeight - scrollTop - clientHeight < 100) {
+            scrollRef.current.scrollTop = scrollHeight;
+          }
+        }
       }
-
-      if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     } catch (error) {
       console.error(error);
       setMessages(prev => [...prev.slice(0, -1), { role: 'model' as const, text: "Erro ao conectar com a Muse. Verifique sua API Key nas configurações." }]);
@@ -154,47 +181,49 @@ export const AIChat: React.FC<AIChatProps> = ({ settings, t, characters = [], st
   const isFirstMessage = messages.length === 1 && !isLoading;
 
   return (
-    <div className="h-screen flex flex-col bg-[var(--bg)]">
+    <div className="h-[100dvh] flex flex-col bg-[var(--bg)] relative overflow-hidden">
       {/* Header */}
-      <header className="px-5 py-3 border-b border-[var(--border)] flex items-center justify-between bg-[var(--card)] shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-[var(--accent)]/10 rounded-xl">
-            <Sparkles className="text-[var(--accent)]" size={20} />
+      <header className="px-5 py-4 border-b border-[var(--border)] flex items-center justify-between card-ink shrink-0 sticky top-0 z-30">
+        <div className="flex items-center gap-4">
+          <div className="w-10 h-10 bg-[var(--accent)]/10 rounded-[2px] flex items-center justify-center shadow-[inset_0_0_20px_rgba(200,169,110,0.05)]">
+            <Sparkles className="text-[var(--accent)]" size={22} />
           </div>
           <div>
-            <h1 className="text-base font-bold leading-tight">{t.aiChat || 'Chat IA'}</h1>
-            <p className="text-xs opacity-40">Muse — assistente criativa</p>
+            <h1 className="text-lg font-bold font-serif leading-tight tracking-tight">{t.aiChat || 'Chat IA'}</h1>
+            <p className="label">Muse — assistente criativa</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           {/* Personality selector */}
           <div className="relative">
             <button
               onClick={() => { setShowPersonalityMenu(p => !p); setShowContextMenu(false); }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[var(--border)] text-xs font-bold hover:border-[var(--accent)] transition-all"
+              className="flex items-center gap-2 px-4 py-2 rounded-[2px] border border-[var(--border)] text-xs font-bold hover:border-[var(--accent)] transition-all bg-[var(--bg)]/50"
             >
               {currentPersonality.icon}
               <span className="hidden sm:inline">{currentPersonality.label}</span>
-              <ChevronDown size={12} className={`transition-transform ${showPersonalityMenu ? 'rotate-180' : ''}`} />
+              <ChevronDown size={14} className={`transition-transform duration-300 ${showPersonalityMenu ? 'rotate-180' : ''}`} />
             </button>
 
             {showPersonalityMenu && (
-              <div className="absolute right-0 top-full mt-2 w-52 bg-[var(--card)] border border-[var(--border)] rounded-2xl shadow-xl z-50 overflow-hidden">
-                {PERSONALITIES.map(p => (
-                  <button
-                    key={p.id}
-                    onClick={() => { setPersonality(p.id); setShowPersonalityMenu(false); }}
-                    className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-[var(--bg)] transition-all ${personality === p.id ? 'text-[var(--accent)]' : ''}`}
-                  >
-                    <span className={personality === p.id ? 'text-[var(--accent)]' : 'opacity-50'}>{p.icon}</span>
-                    <div>
-                      <p className="text-sm font-bold">{p.label}</p>
-                      <p className="text-xs opacity-50">{p.description}</p>
-                    </div>
-                    {personality === p.id && <Sparkles size={12} className="ml-auto text-[var(--accent)]" />}
-                  </button>
-                ))}
+              <div className="absolute right-0 top-full mt-3 w-64 card-ink z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
+                <div className="p-2 space-y-1">
+                  {PERSONALITIES.map(p => (
+                    <button
+                      key={p.id}
+                      onClick={() => { setPersonality(p.id); setShowPersonalityMenu(false); }}
+                      className={`w-full flex items-center gap-4 px-4 py-3 text-left rounded-[2px] transition-all ${personality === p.id ? 'bg-[var(--accent)]/10 text-[var(--accent)]' : 'hover:bg-[var(--bg)]'}`}
+                    >
+                      <span className={personality === p.id ? 'text-[var(--accent)]' : 'opacity-50'}>{p.icon}</span>
+                      <div>
+                        <p className="text-sm font-bold">{p.label}</p>
+                        <p className="text-[10px] opacity-50">{p.description}</p>
+                      </div>
+                      {personality === p.id && <div className="ml-auto w-1.5 h-1.5 bg-[var(--accent)] rounded-full" />}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -202,181 +231,231 @@ export const AIChat: React.FC<AIChatProps> = ({ settings, t, characters = [], st
           {/* Response length */}
           <button
             onClick={() => setResponseLength(prev => prev === 'fast' ? 'detailed' : 'fast')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all ${responseLength === 'fast' ? 'border-[var(--accent)] text-[var(--accent)]' : 'border-[var(--border)]'}`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-[2px] border text-xs font-bold transition-all ${responseLength === 'fast' ? 'border-[var(--accent)] text-[var(--accent)] bg-[var(--accent)]/5' : 'border-[var(--border)] bg-[var(--bg)]/50'}`}
           >
-            {responseLength === 'fast' ? <Zap size={13} /> : <BookOpen size={13} />}
+            {responseLength === 'fast' ? <Zap size={14} /> : <BookOpen size={14} />}
             <span className="hidden sm:inline">{responseLength === 'fast' ? 'Rápida' : 'Detalhada'}</span>
           </button>
 
           {/* Clear */}
           <button
             onClick={() => setShowDeleteConfirm(true)}
-            className="p-2 hover:bg-red-500/10 hover:text-red-500 rounded-xl transition-all"
+            className="p-2.5 hover:bg-red-500/10 hover:text-red-500 rounded-[2px] transition-all border border-transparent hover:border-red-500/20"
             title="Limpar conversa"
           >
-            <Trash2 size={16} />
+            <Trash2 size={18} />
           </button>
         </div>
       </header>
 
       {/* Context badge */}
-      {attachedContext && (
-        <div className="px-4 py-2 bg-[var(--accent)]/5 border-b border-[var(--accent)]/20 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-xs text-[var(--accent)] font-medium">
-            <Paperclip size={13} />
-            <span>Contexto: <strong>{attachedContext.name}</strong> ({attachedContext.type === 'character' ? 'Personagem' : 'História'})</span>
-          </div>
-          <button onClick={() => setAttachedContext(null)} className="text-[var(--accent)] hover:opacity-70 transition-all">
-            <X size={14} />
-          </button>
-        </div>
-      )}
+      <AnimatePresence>
+        {attachedContext && (
+          <motion.div 
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="px-6 py-2.5 bg-[var(--accent)]/5 border-b border-[var(--accent)]/20 flex items-center justify-between">
+              <div className="flex items-center gap-3 label !opacity-100 text-[var(--accent)]">
+                <Paperclip size={14} />
+                <span>Contexto: <span className="text-white/80">{attachedContext.name}</span></span>
+              </div>
+              <button onClick={() => setAttachedContext(null)} className="text-[var(--accent)] hover:opacity-70 transition-all p-1">
+                <X size={16} />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Messages */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((msg, i) => (
-          <div key={i} className={`flex items-end gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            {msg.role === 'model' && (
-              <div className="w-8 h-8 rounded-xl bg-[var(--accent)]/10 flex items-center justify-center shrink-0">
-                <Bot size={16} className="text-[var(--accent)]" />
-              </div>
-            )}
-            <div className={`max-w-[78%] group relative`}>
-              <div className={`px-4 py-3 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap font-serif
-                ${msg.role === 'user'
-                  ? 'bg-[var(--accent)] text-white rounded-br-sm'
-                  : 'bg-[var(--card)] border border-[var(--border)] rounded-bl-sm'
-                }`}
+      <div 
+        ref={scrollRef} 
+        className="flex-1 overflow-y-auto p-6 space-y-8 scroll-smooth custom-scrollbar pb-48"
+      >
+        <div className="max-w-3xl mx-auto w-full space-y-8">
+          {messages.map((msg, i) => (
+            <div key={i} className={`flex gap-5 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+              <div className={`w-10 h-10 rounded-[2px] flex items-center justify-center shrink-0 shadow-lg
+                ${msg.role === 'user' ? 'bg-[var(--accent)] text-black' : 'card-ink text-[var(--accent)] shadow-[inset_0_0_20px_rgba(200,169,110,0.05)]'}`}
               >
-                {msg.text || (isLoading && i === messages.length - 1 && (
-                  <span className="flex gap-1 items-center opacity-60">
-                    <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                    <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                    <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                  </span>
-                ))}
+                {msg.role === 'user' ? <User size={20} /> : <Bot size={20} />}
               </div>
-              {msg.role === 'model' && msg.text && (
-                <button
-                  onClick={() => navigator.clipboard.writeText(msg.text)}
-                  className="absolute -top-2 -right-2 w-6 h-6 bg-[var(--card)] border border-[var(--border)] rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:border-[var(--accent)]"
+              
+              <div className={`flex flex-col max-w-[85%] ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+                <div className={`px-6 py-4 rounded-[2px] text-[15px] leading-relaxed whitespace-pre-wrap font-serif shadow-xl transition-all
+                  ${msg.role === 'user'
+                    ? 'bg-[var(--accent)] text-black'
+                    : 'card-ink'
+                  }`}
                 >
-                  <Copy size={11} />
-                </button>
-              )}
-            </div>
-            {msg.role === 'user' && (
-              <div className="w-8 h-8 rounded-xl bg-[var(--accent)] flex items-center justify-center shrink-0">
-                <User size={16} className="text-white" />
+                  {msg.text || (isLoading && i === messages.length - 1 && (
+                    <span className="flex gap-1.5 items-center opacity-60 py-1.5">
+                      <span className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <span className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <span className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                    </span>
+                  ))}
+                </div>
+                
+                {msg.role === 'model' && msg.text && (
+                  <div className="flex items-center gap-3 mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={() => navigator.clipboard.writeText(msg.text)}
+                      className="p-2 hover:bg-[var(--accent)]/10 rounded-[2px] transition-all text-[var(--accent)] border border-transparent hover:border-[var(--accent)]/20"
+                      title="Copiar resposta"
+                    >
+                      <Copy size={14} />
+                    </button>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-        ))}
+            </div>
+          ))}
+        </div>
       </div>
 
-      {/* Input area */}
-      <div className="p-4 bg-[var(--card)] border-t border-[var(--border)] shrink-0 sticky bottom-0">
-        <div className="max-w-4xl mx-auto space-y-3">
+      {/* Fixed Input area at bottom */}
+      <div className="fixed bottom-0 left-0 right-0 lg:left-[80px] group-data-[sidebar-open=true]:lg:left-[280px] transition-all duration-500 p-6 bg-gradient-to-t from-[var(--bg)] via-[var(--bg)] to-transparent pt-16 z-20">
+        <div className="max-w-3xl mx-auto w-full">
+          <div className="card-ink p-3 space-y-3 backdrop-blur-xl">
+            
+            {/* Suggestion chips — só aparecem no início */}
+            {isFirstMessage && (
+              <div className="flex gap-3 overflow-x-auto pb-2 px-3 no-scrollbar">
+                {SUGGESTIONS.map((s, i) => (
+                  <button
+                    key={i}
+                    onClick={() => handleSend(s.text)}
+                    className="flex items-center gap-3 px-4 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-full hover:border-[var(--accent)] hover:bg-[var(--accent)]/10 transition-all text-left group whitespace-nowrap shrink-0"
+                  >
+                    <span className="text-[var(--accent)] opacity-60 group-hover:opacity-100 transition-all shrink-0">{s.icon}</span>
+                    <span className="label !opacity-100">{s.text}</span>
+                  </button>
+                ))}
+              </div>
+            )}
 
-          {/* Suggestion chips — só aparecem no início */}
-          {isFirstMessage && (
-            <div className="grid grid-cols-2 gap-2">
-              {SUGGESTIONS.map((s, i) => (
+            {/* Input row */}
+            <div className="flex gap-3 items-end">
+              {/* Attach context button */}
+              <div className="relative">
                 <button
-                  key={i}
-                  onClick={() => handleSend(s.text)}
-                  className="flex items-center gap-2 px-3 py-2.5 bg-[var(--bg)] border border-[var(--border)] rounded-2xl hover:border-[var(--accent)] hover:bg-[var(--accent)]/5 transition-all text-left group"
+                  onClick={() => { setShowContextMenu(p => !p); setShowPersonalityMenu(false); }}
+                  className={`p-4 rounded-[2px] border transition-all ${attachedContext ? 'border-[var(--accent)] text-[var(--accent)] bg-[var(--accent)]/10' : 'border-[var(--border)] hover:border-[var(--accent)] bg-[var(--bg)]'}`}
+                  title="Anexar contexto"
                 >
-                  <span className="text-[var(--accent)] opacity-60 group-hover:opacity-100 transition-all shrink-0">{s.icon}</span>
-                  <span className="text-xs font-medium leading-tight">{s.text}</span>
+                  <Paperclip size={22} />
                 </button>
-              ))}
-            </div>
-          )}
 
-          {/* Input row */}
-          <div className="flex gap-2 items-end">
-            {/* Attach context button */}
-            <div className="relative">
-              <button
-                onClick={() => { setShowContextMenu(p => !p); setShowPersonalityMenu(false); }}
-                className={`p-3 rounded-xl border transition-all ${attachedContext ? 'border-[var(--accent)] text-[var(--accent)]' : 'border-[var(--border)] hover:border-[var(--accent)]'}`}
-                title="Anexar contexto"
-              >
-                <Paperclip size={18} />
-              </button>
-
-              {showContextMenu && (
-                <div className="absolute bottom-full mb-2 left-0 w-64 bg-[var(--card)] border border-[var(--border)] rounded-2xl shadow-xl z-50 overflow-hidden">
-                  {characters.length === 0 && stories.length === 0 ? (
-                    <p className="text-xs opacity-50 p-4 text-center">Nenhum personagem ou história criada ainda.</p>
-                  ) : (
-                    <>
-                      {characters.length > 0 && (
-                        <div>
-                          <p className="text-xs font-bold opacity-40 px-4 pt-3 pb-1 uppercase tracking-wider">Personagens</p>
-                          {characters.map(c => (
-                            <button key={c.id} onClick={() => attachCharacter(c)} className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--bg)] transition-all text-left">
-                              {c.imageUrl
-                                ? <img src={c.imageUrl} className="w-7 h-7 rounded-lg object-cover" />
-                                : <div className="w-7 h-7 rounded-lg bg-[var(--accent)]/10 flex items-center justify-center text-[var(--accent)] text-xs font-bold">{c.basicInfo.name.charAt(0)}</div>
-                              }
-                              <span className="text-sm font-medium truncate">{c.basicInfo.name}</span>
-                            </button>
-                          ))}
+                <AnimatePresence>
+                  {showContextMenu && (
+                    <motion.div 
+                      initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                      className="absolute bottom-full mb-4 left-0 w-72 card-ink z-50 overflow-hidden"
+                    >
+                      {characters.length === 0 && stories.length === 0 ? (
+                        <p className="text-xs opacity-50 p-6 text-center italic">Nenhum personagem ou história criada ainda.</p>
+                      ) : (
+                        <div className="max-h-80 overflow-y-auto custom-scrollbar p-2">
+                          {characters.length > 0 && (
+                            <div className="space-y-1">
+                              <p className="label px-4 pt-3 pb-2">Personagens</p>
+                              {characters.map(c => (
+                                <button key={c.id} onClick={() => attachCharacter(c)} className="w-full flex items-center gap-4 px-4 py-3 hover:bg-[var(--bg)] rounded-[2px] transition-all text-left">
+                                  {c.imageUrl
+                                    ? <img src={c.imageUrl} className="w-9 h-9 rounded-[2px] object-cover shadow-sm" />
+                                    : <div className="w-9 h-9 rounded-[2px] bg-[var(--accent)]/10 flex items-center justify-center text-[var(--accent)] text-sm font-bold">{c.basicInfo.name.charAt(0)}</div>
+                                  }
+                                  <span className="text-sm font-bold truncate">{c.basicInfo.name}</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                          {stories.length > 0 && (
+                            <div className="space-y-1 mt-4">
+                              <p className="label px-4 pt-3 pb-2">Histórias</p>
+                              {stories.map(s => (
+                                <button key={s.id} onClick={() => attachStory(s)} className="w-full flex items-center gap-4 px-4 py-3 hover:bg-[var(--bg)] rounded-[2px] transition-all text-left">
+                                  <div className="w-9 h-9 rounded-[2px] bg-[var(--accent)]/10 flex items-center justify-center text-[var(--accent)]">
+                                    <BookOpen size={18} />
+                                  </div>
+                                  <span className="text-sm font-bold truncate">{s.title}</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       )}
-                      {stories.length > 0 && (
-                        <div>
-                          <p className="text-xs font-bold opacity-40 px-4 pt-3 pb-1 uppercase tracking-wider">Histórias</p>
-                          {stories.map(s => (
-                            <button key={s.id} onClick={() => attachStory(s)} className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--bg)] transition-all text-left">
-                              <div className="w-7 h-7 rounded-lg bg-[var(--accent)]/10 flex items-center justify-center text-[var(--accent)]">
-                                <BookOpen size={14} />
-                              </div>
-                              <span className="text-sm font-medium truncate">{s.title}</span>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </>
+                    </motion.div>
                   )}
-                </div>
-              )}
-            </div>
+                </AnimatePresence>
+              </div>
 
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-              placeholder="Peça ajuda com sua história..."
-              className="flex-1 bg-[var(--bg)] border border-[var(--border)] rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[var(--accent)] transition-all"
-            />
-            <button
-              onClick={() => handleSend()}
-              disabled={isLoading || !input.trim()}
-              className="p-3 bg-[var(--accent)] text-white rounded-xl hover:opacity-90 disabled:opacity-40 transition-all"
-            >
-              {isLoading ? <Loader2 className="animate-spin" size={18} /> : <Send size={18} />}
-            </button>
+              <textarea
+                rows={1}
+                value={input}
+                onChange={(e) => {
+                  setInput(e.target.value);
+                  e.target.style.height = 'auto';
+                  e.target.style.height = e.target.scrollHeight + 'px';
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSend();
+                  }
+                }}
+                placeholder="Peça ajuda com sua história..."
+                className="input-field flex-1 max-h-48 custom-scrollbar resize-none font-serif text-[15px] py-4"
+              />
+              
+              <button
+                onClick={() => handleSend()}
+                disabled={isLoading || !input.trim()}
+                className="p-4 bg-[var(--accent)] text-black rounded-[2px] hover:opacity-90 disabled:opacity-40 transition-all shadow-xl active:scale-95 shrink-0"
+              >
+                {isLoading ? <Loader2 className="animate-spin" size={22} /> : <Send size={22} />}
+              </button>
+            </div>
           </div>
+          <p className="label text-center mt-3">Muse pode cometer erros. Verifique informações importantes.</p>
         </div>
       </div>
 
       {/* Delete confirm modal */}
-      {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-[var(--card)] p-6 rounded-2xl border border-[var(--border)] max-w-sm w-full space-y-4">
-            <h3 className="text-lg font-bold">Limpar conversa?</h3>
-            <p className="opacity-60 text-sm">O histórico será apagado e o contexto anexado será removido.</p>
-            <div className="flex gap-2 justify-end">
-              <button onClick={() => setShowDeleteConfirm(false)} className="px-4 py-2 hover:bg-[var(--bg)] rounded-xl text-sm transition-all">Cancelar</button>
-              <button onClick={clearChat} className="px-4 py-2 bg-red-500 text-white rounded-xl hover:bg-red-600 text-sm transition-all">Limpar</button>
-            </div>
+      <AnimatePresence>
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+              onClick={() => setShowDeleteConfirm(false)}
+            />
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="relative card-ink max-w-md w-full space-y-8"
+            >
+              <div className="space-y-4">
+                <h3 className="text-2xl font-bold font-serif">Limpar conversa?</h3>
+                <p className="opacity-60 text-base leading-relaxed">O histórico será apagado permanentemente e o contexto anexado será removido. Esta ação não pode ser desfeita.</p>
+              </div>
+              <div className="flex gap-4">
+                <button onClick={() => setShowDeleteConfirm(false)} className="btn-ghost flex-1">Cancelar</button>
+                <button onClick={clearChat} className="btn-primary flex-1 !bg-red-500 !text-white hover:!bg-red-600 shadow-lg shadow-red-500/20">Limpar</button>
+              </div>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
 
       {/* Click outside to close menus */}
       {(showPersonalityMenu || showContextMenu) && (

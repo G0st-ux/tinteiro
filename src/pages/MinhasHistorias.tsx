@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../services/supabase';
+import { db, UserProfile } from '../firebase';
+import { collection, query, where, orderBy, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import { 
   Plus, Book, Edit3, Eye, Heart, MessageSquare, 
   MoreVertical, X, Camera, Loader2, Trash2, Globe, Lock
@@ -7,7 +8,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 
 interface MinhasHistoriasProps {
-  usuario: { id: string; nome: string; foto?: string; };
+  usuario: UserProfile;
   t: any;
   onVerCapitulos: (historia: any) => void;
 }
@@ -40,16 +41,36 @@ export const MinhasHistorias: React.FC<MinhasHistoriasProps> = ({ usuario, t, on
   const [tagInput, setTagInput] = useState('');
 
   const carregarHistorias = async () => {
+    if (!usuario?.uid) return;
     setCarregando(true);
     try {
-      const { data, error } = await supabase
-        .from('historias')
-        .select('*, capitulos(count), curtidas(count)')
-        .eq('autor_id', usuario.id)
-        .order('criado_em', { ascending: false });
+      const q = query(
+        collection(db, 'stories'),
+        where('authorId', '==', usuario.uid),
+        orderBy('createdAt', 'desc')
+      );
+      
+      const snap = await getDocs(q);
+      const docs = await Promise.all(snap.docs.map(async (d) => {
+        const data = d.data();
+        
+        // Count chapters
+        const chaptersQ = query(collection(db, 'chapters'), where('storyId', '==', d.id));
+        const chaptersSnap = await getDocs(chaptersQ);
+        
+        // Count likes
+        const likesQ = query(collection(db, 'likes'), where('storyId', '==', d.id));
+        const likesSnap = await getDocs(likesQ);
 
-      if (error) throw error;
-      setHistorias(data || []);
+        return {
+          id: d.id,
+          ...data,
+          capitulos_count: chaptersSnap.size,
+          curtidas_count: likesSnap.size
+        };
+      }));
+      
+      setHistorias(docs);
     } catch (error) {
       console.error('Erro ao carregar histórias:', error);
     } finally {
@@ -59,7 +80,7 @@ export const MinhasHistorias: React.FC<MinhasHistoriasProps> = ({ usuario, t, on
 
   useEffect(() => {
     carregarHistorias();
-  }, [usuario.id]);
+  }, [usuario.uid]);
 
   const handleSalvar = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,21 +90,22 @@ export const MinhasHistorias: React.FC<MinhasHistoriasProps> = ({ usuario, t, on
     try {
       const payload = {
         ...form,
-        autor_id: usuario.id,
-        criado_em: historiaSelecionada ? historiaSelecionada.criado_em : new Date().toISOString()
+        authorId: usuario.uid,
+        authorName: usuario.nome,
+        createdAt: historiaSelecionada ? historiaSelecionada.createdAt : new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       };
 
       if (historiaSelecionada) {
-        const { error } = await supabase
-          .from('historias')
-          .update(payload)
-          .eq('id', historiaSelecionada.id);
-        if (error) throw error;
+        const storyRef = doc(db, 'stories', historiaSelecionada.id);
+        await updateDoc(storyRef, payload);
       } else {
-        const { error } = await supabase
-          .from('historias')
-          .insert([payload]);
-        if (error) throw error;
+        await addDoc(collection(db, 'stories'), {
+          ...payload,
+          views: 0,
+          likes: 0,
+          comments: 0
+        });
       }
 
       setModalCriarAberto(false);
@@ -124,8 +146,7 @@ export const MinhasHistorias: React.FC<MinhasHistoriasProps> = ({ usuario, t, on
   const handleExcluir = async (id: string) => {
     if (!confirm('Tem certeza que deseja excluir esta história? Todos os capítulos serão perdidos.')) return;
     try {
-      const { error } = await supabase.from('historias').delete().eq('id', id);
-      if (error) throw error;
+      await deleteDoc(doc(db, 'stories', id));
       carregarHistorias();
     } catch (error) {
       console.error('Erro ao excluir história:', error);
@@ -241,9 +262,9 @@ export const MinhasHistorias: React.FC<MinhasHistoriasProps> = ({ usuario, t, on
                 </div>
 
                 <div className="flex items-center gap-4 text-xs opacity-60 font-medium">
-                  <span className="flex items-center gap-1"><Book size={14} /> {historia.capitulos?.[0]?.count || 0} caps</span>
-                  <span className="flex items-center gap-1"><Heart size={14} /> {historia.curtidas?.[0]?.count || 0}</span>
-                  <span className="flex items-center gap-1"><Eye size={14} /> {historia.visualizacoes || 0}</span>
+                  <span className="flex items-center gap-1"><Book size={14} /> {historia.capitulos_count || 0} caps</span>
+                  <span className="flex items-center gap-1"><Heart size={14} /> {historia.curtidas_count || 0}</span>
+                  <span className="flex items-center gap-1"><Eye size={14} /> {historia.views || 0}</span>
                 </div>
 
                 <div className="pt-4 flex gap-2 mt-auto">

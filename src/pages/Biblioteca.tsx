@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../services/supabase';
+import { db } from '../firebase';
+import { collection, query, where, orderBy, getDocs, limit, doc, getDoc } from 'firebase/firestore';
 import { 
   Search, Filter, Heart, Eye, BookOpen, 
   Loader2, User, ChevronRight, Hash, Star
@@ -11,11 +12,26 @@ interface BibliotecaProps {
   t: any;
 }
 
+interface StoryData {
+  id: string;
+  title?: string;
+  category?: string;
+  rating?: string;
+  createdAt?: any;
+  views?: number;
+  authorId: string;
+  author?: any;
+  likes_count?: number;
+  capa?: string;
+  description?: string;
+  content?: string;
+}
+
 const GENEROS = ['Todos', 'Fantasia', 'Romance', 'Ficção Científica', 'Terror', 'Mistério', 'Aventura', 'Drama', 'Comédia', 'Poesia', 'Outros'];
 const CLASSIFICACOES = ['Todos', 'Livre', '+13', '+18'];
 
 export const Biblioteca: React.FC<BibliotecaProps> = ({ onVerHistoria, t }) => {
-  const [historias, setHistorias] = useState<any[]>([]);
+  const [historias, setHistorias] = useState<StoryData[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [busca, setBusca] = useState('');
   const [filtroGenero, setFiltroGenero] = useState('Todos');
@@ -25,37 +41,61 @@ export const Biblioteca: React.FC<BibliotecaProps> = ({ onVerHistoria, t }) => {
   const carregarHistorias = async () => {
     setCarregando(true);
     try {
-      let query = supabase
-        .from('historias')
-        .select('*, usuarios(nome, foto), curtidas(count)')
-        .eq('status', 'publicada');
+      // Fetch public stories
+      let q = query(
+        collection(db, 'stories'),
+        where('isPublic', '==', true),
+        limit(100)
+      );
 
+      const snap = await getDocs(q);
+      let result: StoryData[] = await Promise.all(snap.docs.map(async (d) => {
+        const data = d.data();
+        
+        // Fetch author info
+        const authorRef = doc(db, 'users_public', data.authorId);
+        const authorSnap = await getDoc(authorRef);
+        const authorData = authorSnap.exists() ? authorSnap.data() : null;
+
+        // Count likes
+        const likesQ = query(collection(db, 'likes'), where('storyId', '==', d.id));
+        const likesSnap = await getDocs(likesQ);
+
+        return {
+          id: d.id,
+          ...data,
+          author: authorData,
+          likes_count: likesSnap.size
+        } as StoryData;
+      }));
+
+      // Client-side filtering
       if (busca) {
-        query = query.ilike('titulo', `%${busca}%`);
+        result = result.filter(h => 
+          (h.title || '').toLowerCase().includes(busca.toLowerCase()) || 
+          (h.author?.nome || '').toLowerCase().includes(busca.toLowerCase())
+        );
       }
 
       if (filtroGenero !== 'Todos') {
-        query = query.eq('genero', filtroGenero);
+        result = result.filter(h => h.category === filtroGenero);
       }
 
       if (filtroClassificacao !== 'Todos') {
-        query = query.eq('classificacao', filtroClassificacao);
+        result = result.filter(h => h.rating === filtroClassificacao);
       }
 
+      // Sorting
       if (ordenacao === 'recentes') {
-        query = query.order('criado_em', { ascending: false });
+        result.sort((a, b) => {
+          const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
+          const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
+          return dateB.getTime() - dateA.getTime();
+        });
       } else if (ordenacao === 'populares') {
-        query = query.order('visualizacoes', { ascending: false });
-      }
-
-      const { data, error } = await query;
-      if (error) throw error;
-
-      let result = data || [];
-      
-      // Sort by likes if needed (since it's a count join, we might need to sort client-side if query doesn't support it directly)
-      if (ordenacao === 'curtidas') {
-        result = result.sort((a, b) => (b.curtidas?.[0]?.count || 0) - (a.curtidas?.[0]?.count || 0));
+        result.sort((a, b) => (b.views || 0) - (a.views || 0));
+      } else if (ordenacao === 'curtidas') {
+        result.sort((a, b) => (b.likes_count || 0) - (a.likes_count || 0));
       }
 
       setHistorias(result);
@@ -162,29 +202,29 @@ export const Biblioteca: React.FC<BibliotecaProps> = ({ onVerHistoria, t }) => {
           {historias.map((historia) => (
             <motion.div 
               key={historia.id}
-              whileHover={{ y: -10 }}
+              whileHover={{ y: -5 }}
               onClick={() => onVerHistoria(historia)}
-              className="bg-[var(--card)] border border-[var(--border)] rounded-[2rem] overflow-hidden shadow-sm hover:shadow-2xl transition-all cursor-pointer group"
+              className="card-story cursor-pointer group"
             >
               <div className="aspect-[2/3] relative bg-[var(--bg)] overflow-hidden">
                 {historia.capa ? (
                   <img 
                     src={historia.capa} 
-                    alt={historia.titulo}
+                    alt={historia.title}
                     className="w-full h-full object-cover transition-transform group-hover:scale-110"
                     referrerPolicy="no-referrer"
                   />
                 ) : (
                   <div className="w-full h-full bg-gradient-to-br from-[var(--accent)] to-[var(--bg)] flex items-center justify-center p-6 text-center">
-                    <h3 className="text-lg font-bold font-serif text-white drop-shadow-lg">{historia.titulo}</h3>
+                    <h3 className="text-lg font-bold font-serif text-white drop-shadow-lg">{historia.title}</h3>
                   </div>
                 )}
                 <div className="absolute top-4 left-4">
                   <span className={`px-3 py-1 rounded-full text-[10px] font-bold text-white shadow-lg ${
-                    historia.classificacao === 'Livre' ? 'bg-blue-500' : 
-                    historia.classificacao === '+13' ? 'bg-yellow-500' : 'bg-red-500'
+                    historia.rating === 'Livre' ? 'bg-blue-500' : 
+                    historia.rating === '+13' ? 'bg-yellow-500' : 'bg-red-500'
                   }`}>
-                    {historia.classificacao}
+                    {historia.rating}
                   </span>
                 </div>
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all flex items-end p-6">
@@ -196,25 +236,25 @@ export const Biblioteca: React.FC<BibliotecaProps> = ({ onVerHistoria, t }) => {
 
               <div className="p-6 space-y-4">
                 <div className="space-y-1">
-                  <h3 className="font-bold text-lg line-clamp-1 group-hover:text-[var(--accent)] transition-all">{historia.titulo}</h3>
+                  <h3 className="font-bold font-serif text-lg line-clamp-1 group-hover:text-[var(--accent)] transition-all">{historia.title}</h3>
                   <div className="flex items-center gap-2 opacity-60">
                     <div className="w-5 h-5 rounded-full bg-[var(--accent)]/10 flex items-center justify-center overflow-hidden">
-                      {historia.usuarios?.foto ? (
-                        <img src={historia.usuarios.foto} alt={historia.usuarios.nome} className="w-full h-full object-cover" />
+                      {historia.author?.foto ? (
+                        <img src={historia.author.foto} alt={historia.author.nome} className="w-full h-full object-cover" />
                       ) : (
                         <User size={10} />
                       )}
                     </div>
-                    <span className="text-xs font-medium">{historia.usuarios?.nome}</span>
+                    <span className="text-xs font-medium font-sans">{historia.author?.nome}</span>
                   </div>
                 </div>
 
                 <div className="flex items-center justify-between pt-2 border-t border-[var(--border)]">
-                  <div className="flex items-center gap-3 text-[10px] font-bold opacity-40 uppercase tracking-widest">
-                    <span className="flex items-center gap-1"><Heart size={12} /> {historia.curtidas?.[0]?.count || 0}</span>
-                    <span className="flex items-center gap-1"><Eye size={12} /> {historia.visualizacoes || 0}</span>
+                  <div className="flex items-center gap-3 text-[10px] font-bold opacity-40 uppercase tracking-widest font-sans">
+                    <span className="flex items-center gap-1"><Heart size={12} /> {historia.likes_count || 0}</span>
+                    <span className="flex items-center gap-1"><Eye size={12} /> {historia.views || 0}</span>
                   </div>
-                  <span className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-widest">{historia.genero}</span>
+                  <span className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-widest font-sans">{historia.category}</span>
                 </div>
               </div>
             </motion.div>

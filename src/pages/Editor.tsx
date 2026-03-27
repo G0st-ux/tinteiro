@@ -6,12 +6,13 @@ import {
   Layout, Type, Eye, Bold, Italic, Strikethrough, 
   Heading1, Heading2, Heading3, List, ListOrdered, 
   Quote as QuoteIcon, Minus, Image as ImageIcon, 
-  Copy, Plus, Loader2, Sparkles, X, Check, Menu
+  Copy, Plus, Loader2, Sparkles, X, Check, Menu, PenTool
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { CATEGORIES } from '../constants';
 import { GoogleGenAI } from "@google/genai";
+import { motion } from 'motion/react';
 
 interface EditorProps {
   stories: Story[];
@@ -188,200 +189,257 @@ export const Editor: React.FC<EditorProps> = ({ stories, setStories, settings, t
   };
 
   return (
-    <div className={`h-full flex flex-col gap-4 fade-in ${isFocusMode ? 'focus-mode-active' : ''}`}>
+    <div className={`h-full flex flex-col gap-6 fade-in ${isFocusMode ? 'focus-mode-active' : ''}`}>
       {/* Top Bar */}
       {!isFocusMode && (
-        <header className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 bg-[var(--card)] p-4 rounded-2xl border border-[var(--border)] shadow-sm">
-          <div className="flex items-center gap-4 w-full lg:w-auto">
-            <button onClick={() => navigate('/library')} className="p-2 hover:bg-[var(--bg)] rounded-full transition-colors">
-              <ArrowLeft size={20} />
+        <header className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 card-ink p-6">
+          <div className="flex items-center gap-6 w-full lg:w-auto">
+            <button onClick={() => navigate('/library')} className="p-3 hover:bg-white/5 rounded-[2px] transition-all active:scale-90 text-white/40 hover:text-[var(--accent)]">
+              <ArrowLeft size={22} />
             </button>
-            <div className="relative flex flex-col items-center gap-1">
-              <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-2 hover:bg-[var(--bg)] rounded-lg transition-colors" title="Menu">
-                <Menu size={20} />
-              </button>
-              <button onClick={() => setAiPanelOpen(true)} className="p-2 hover:bg-[var(--bg)] rounded-lg transition-colors" title="Abrir Painel IA">
-                <Zap size={20} />
-              </button>
-              {isMenuOpen && (
-                <div className="absolute left-0 top-full mt-2 w-64 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-xl z-50 p-4 space-y-4">
-                  {/* Formatting */}
-                  <div className="flex flex-wrap gap-1">
-                    <button onClick={() => insertText('**', '**')} className="p-2 hover:bg-[var(--bg)] rounded-lg" title="Negrito"><Bold size={16} /></button>
-                    <button onClick={() => insertText('*', '*')} className="p-2 hover:bg-[var(--bg)] rounded-lg" title="Itálico"><Italic size={16} /></button>
-                    <button onClick={() => insertText('# ')} className="p-2 hover:bg-[var(--bg)] rounded-lg" title="H1"><Heading1 size={16} /></button>
-                    <button onClick={() => insertText('- ')} className="p-2 hover:bg-[var(--bg)] rounded-lg" title="Lista"><List size={16} /></button>
-                  </div>
-                  {/* View Modes */}
-                  <div className="flex bg-[var(--bg)] p-1 rounded-lg border border-[var(--border)]">
-                    <button onClick={() => setViewMode('write')} className={`flex-1 p-1.5 rounded-md ${viewMode === 'write' ? 'bg-[var(--accent)] text-white' : ''}`} title="Escrever"><Type size={16} /></button>
-                    <button onClick={() => setViewMode('split')} className={`flex-1 p-1.5 rounded-md ${viewMode === 'split' ? 'bg-[var(--accent)] text-white' : ''}`} title="Dividir"><Layout size={16} /></button>
-                    <button onClick={() => setViewMode('preview')} className={`flex-1 p-1.5 rounded-md ${viewMode === 'preview' ? 'bg-[var(--accent)] text-white' : ''}`} title="Preview"><Eye size={16} /></button>
-                    <button onClick={() => { setIsFocusMode(true); setIsMenuOpen(false); }} className="flex-1 p-1.5 rounded-md hover:bg-[var(--card)]" title="Modo Foco"><Maximize2 size={16} /></button>
-                  </div>
-                  {/* AI Actions */}
-                  <div className="space-y-1">
-                    <div className="text-xs font-bold uppercase tracking-wider opacity-50 px-4 py-2">IA</div>
-                    <button onClick={() => { setAiPanelOpen(true); setIsMenuOpen(false); }} className="w-full text-left px-4 py-2 hover:bg-[var(--bg)] rounded-lg text-sm flex items-center gap-2">
-                      <Zap size={16} />
-                      Abrir Painel
-                    </button>
-                    <div className="h-px bg-[var(--border)] my-2" />
-                    <button onClick={() => { handleAiAction('continue'); setIsMenuOpen(false); }} className="w-full text-left px-4 py-2 hover:bg-[var(--bg)] rounded-lg text-sm">Continuar</button>
-                    <button onClick={() => { handleAiAction('review'); setIsMenuOpen(false); }} className="w-full text-left px-4 py-2 hover:bg-[var(--bg)] rounded-lg text-sm">Revisar</button>
-                    <button onClick={() => { handleAiAction('summarize'); setIsMenuOpen(false); }} className="w-full text-left px-4 py-2 hover:bg-[var(--bg)] rounded-lg text-sm">Resumir</button>
-                    <button onClick={() => { handleAiAction('rewrite'); setIsMenuOpen(false); }} className="w-full text-left px-4 py-2 hover:bg-[var(--bg)] rounded-lg text-sm">Reescrever</button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="flex-1 lg:w-64">
+            
+            <div className="flex-1 lg:w-80 group relative">
               <input 
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Título da sua história..."
-                className="text-xl font-bold bg-transparent border-none focus:outline-none w-full font-serif"
+                className="text-2xl font-serif font-semibold bg-transparent border-none focus:outline-none w-full placeholder:text-white/10 text-white group-hover:text-[var(--accent)] transition-colors"
               />
+              <div className="absolute bottom-0 left-0 h-[1px] w-0 group-focus-within:w-full bg-[var(--accent)] transition-all duration-500" />
             </div>
           </div>
           
-          <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto justify-end">
-            <select 
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-1.5 text-xs font-bold uppercase tracking-wider focus:outline-none focus:border-[var(--accent)]"
-            >
-              {CATEGORIES.map(cat => (
-                <option key={cat.id} value={cat.id}>{cat.label}</option>
-              ))}
-            </select>
-
-            <div className="h-6 w-px bg-[var(--border)] mx-2 hidden sm:block" />
-
-            <button onClick={handleNew} className="p-2 hover:bg-[var(--bg)] rounded-lg transition-colors" title={t.new}>
-              <Plus size={20} />
-            </button>
-            
-            <div className="relative group">
-              <button onClick={() => {
-                const fullText = `${title}\n\n${content}`;
-                navigator.clipboard.writeText(fullText);
-                alert('História copiada!');
-              }} className="p-2 hover:bg-[var(--bg)] rounded-lg transition-colors" title="Copiar história">
-                <Copy size={20} />
-              </button>
+          <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto justify-end">
+            <div className="flex bg-[#07070e] p-1 rounded-[2px] border border-[var(--border)]">
+              <button onClick={() => setViewMode('write')} className={`p-2.5 rounded-[2px] transition-all ${viewMode === 'write' ? 'bg-[var(--accent)] text-black' : 'text-white/30 hover:text-white'}`} title="Escrever"><Type size={18} /></button>
+              <button onClick={() => setViewMode('split')} className={`p-2.5 rounded-[2px] transition-all ${viewMode === 'split' ? 'bg-[var(--accent)] text-black' : 'text-white/30 hover:text-white'}`} title="Dividir"><Layout size={18} /></button>
+              <button onClick={() => setViewMode('preview')} className={`p-2.5 rounded-[2px] transition-all ${viewMode === 'preview' ? 'bg-[var(--accent)] text-black' : 'text-white/30 hover:text-white'}`} title="Preview"><Eye size={18} /></button>
             </div>
 
-            <button onClick={handleSave} className="inkwell-button flex items-center gap-2 py-2 px-4">
-              <Save size={18} />
-              <span className="hidden sm:inline">{t.save}</span>
+            <div className="h-8 w-[1px] bg-[var(--border)] mx-2 hidden sm:block" />
+
+            <button onClick={() => setIsFocusMode(true)} className="p-3 hover:bg-white/5 rounded-[2px] transition-all text-white/30 hover:text-[var(--accent)]" title="Modo Foco">
+              <Maximize2 size={20} />
             </button>
 
-            {storyId && (
-              <button onClick={handleDelete} className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors">
-                <Trash2 size={20} />
+            <button onClick={handleSave} className="btn-primary flex items-center gap-3 py-3 px-8">
+              <Save size={18} />
+              <span className="hidden sm:inline uppercase tracking-[0.2em] text-[10px] font-bold">{t.save}</span>
+            </button>
+
+            <div className="relative">
+              <button onClick={() => setIsMenuOpen(!isMenuOpen)} className={`p-3 rounded-[2px] transition-all ${isMenuOpen ? 'bg-[var(--accent)] text-black' : 'hover:bg-white/5 text-white/30'}`}>
+                <Menu size={20} />
               </button>
-            )}
+              
+              {isMenuOpen && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  className="absolute right-0 top-full mt-4 w-72 card-ink z-50 p-6 space-y-6"
+                >
+                  <div className="space-y-4">
+                    <p className="label">CATEGORIA</p>
+                    <select 
+                      value={category}
+                      onChange={(e) => setCategory(e.target.value)}
+                      className="input-field w-full"
+                    >
+                      {CATEGORIES.map(cat => (
+                        <option key={cat.id} value={cat.id} className="bg-[#07070e]">{cat.label}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="h-px bg-[var(--border)]" />
+
+                  <div className="space-y-4">
+                    <p className="label">AÇÕES</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button onClick={handleNew} className="flex flex-col items-center gap-2 p-4 bg-white/5 rounded-[2px] hover:bg-[var(--accent)] hover:text-black transition-all group">
+                        <Plus size={20} className="text-[var(--accent)] group-hover:text-black" />
+                        <span className="text-[9px] font-bold uppercase tracking-widest">Novo</span>
+                      </button>
+                      <button onClick={() => {
+                        const fullText = `${title}\n\n${content}`;
+                        navigator.clipboard.writeText(fullText);
+                        setIsMenuOpen(false);
+                      }} className="flex flex-col items-center gap-2 p-4 bg-white/5 rounded-[2px] hover:bg-[var(--accent)] hover:text-black transition-all group">
+                        <Copy size={20} className="text-[var(--accent)] group-hover:text-black" />
+                        <span className="text-[9px] font-bold uppercase tracking-widest">Copiar</span>
+                      </button>
+                    </div>
+                    {storyId && (
+                      <button onClick={handleDelete} className="w-full flex items-center justify-center gap-3 p-4 bg-red-500/5 text-red-500 rounded-[2px] hover:bg-red-500 hover:text-white transition-all">
+                        <Trash2 size={18} />
+                        <span className="text-[9px] font-bold uppercase tracking-widest">Excluir Manuscrito</span>
+                      </button>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </div>
           </div>
         </header>
       )}
 
       {/* Editor Area */}
-      <div className={`flex-1 flex gap-4 overflow-hidden min-h-0 ${isFocusMode ? 'max-w-3xl mx-auto w-full py-12' : ''}`}>
+      <div className={`flex-1 flex gap-8 overflow-hidden min-h-0 ${isFocusMode ? 'max-w-4xl mx-auto w-full py-12' : ''}`}>
         {(viewMode === 'write' || viewMode === 'split') && (
-          <div className="flex-1 flex flex-col bg-[var(--card)] rounded-2xl border border-[var(--border)] shadow-sm overflow-hidden relative">
+          <div className="flex-1 flex flex-col card-ink overflow-hidden relative group">
+            <div className="absolute inset-0 paper-texture opacity-40 pointer-events-none" />
             <textarea 
               ref={textareaRef}
               value={content}
               onChange={(e) => setContent(e.target.value)}
               spellCheck="true"
-              placeholder="Era uma vez..."
-              className="flex-1 w-full p-8 bg-transparent focus:outline-none resize-none font-serif text-lg leading-relaxed"
+              placeholder="A página em branco é um convite ao infinito..."
+              className="flex-1 w-full p-12 bg-transparent focus:outline-none resize-none font-serif text-xl leading-[1.8] text-white/80 placeholder:text-white/5 relative z-10 selection:bg-[var(--accent)]/30"
             />
             {isFocusMode && (
               <button 
                 onClick={() => setIsFocusMode(false)}
-                className="absolute top-4 right-4 p-2 bg-[var(--bg)]/50 hover:bg-[var(--bg)] rounded-full transition-colors"
+                className="absolute top-8 right-8 p-4 bg-white/5 hover:bg-[var(--accent)] hover:text-black rounded-[2px] transition-all z-20 group-hover:opacity-100 opacity-0"
               >
-                <Minimize2 size={20} />
+                <Minimize2 size={24} />
               </button>
+            )}
+            
+            {/* Floating Toolbar (Focus Mode) */}
+            {isFocusMode && (
+              <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-2 p-2 card-ink z-20 opacity-0 group-hover:opacity-100 transition-all duration-500 translate-y-4 group-hover:translate-y-0">
+                <button onClick={() => insertText('**', '**')} className="p-3 hover:bg-[var(--accent)] hover:text-black rounded-[2px] transition-all"><Bold size={18} /></button>
+                <button onClick={() => insertText('*', '*')} className="p-3 hover:bg-[var(--accent)] hover:text-black rounded-[2px] transition-all"><Italic size={18} /></button>
+                <button onClick={() => insertText('# ')} className="p-3 hover:bg-[var(--accent)] hover:text-black rounded-[2px] transition-all"><Heading1 size={18} /></button>
+                <div className="w-px h-6 bg-[var(--border)] mx-1" />
+                <button onClick={() => setAiPanelOpen(true)} className="p-3 hover:bg-[var(--accent)] hover:text-black rounded-[2px] transition-all text-[var(--accent)]"><Zap size={18} /></button>
+              </div>
             )}
           </div>
         )}
 
         {(viewMode === 'preview' || viewMode === 'split') && (
-          <div className="flex-1 bg-[var(--card)] rounded-2xl border border-[var(--border)] shadow-sm overflow-y-auto p-8 prose prose-invert max-w-none prose-headings:font-serif prose-p:font-serif prose-p:text-lg">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {content || "*O preview aparecerá aqui...*"}
-            </ReactMarkdown>
+          <div className="flex-1 card-ink overflow-y-auto p-12 custom-scrollbar">
+            <div className="prose prose-invert max-w-none prose-headings:font-serif prose-p:font-serif prose-p:text-xl prose-p:leading-[1.8] prose-p:text-white/70 prose-headings:text-[var(--accent)] prose-strong:text-[var(--accent)]/80">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {content || "*O eco das suas palavras aparecerá aqui...*"}
+              </ReactMarkdown>
+            </div>
           </div>
         )}
 
         {/* AI Panel */}
         {aiPanelOpen && (
-          <div className="w-80 bg-[var(--card)] border border-[var(--border)] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-right-4 duration-300">
-            <div className="p-4 border-b border-[var(--border)] flex justify-between items-center bg-[var(--bg)]">
-              <h3 className="font-bold flex items-center gap-2">
-                <Sparkles size={18} className="text-[var(--accent)]" />
-                {t.aiTools}
-              </h3>
-              <button onClick={() => setAiPanelOpen(false)} className="p-1 hover:bg-[var(--card)] rounded-full">
-                <X size={18} />
+          <motion.div 
+            initial={{ x: 300, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            className="w-96 card-ink flex flex-col overflow-hidden"
+          >
+            <div className="p-8 border-b border-[var(--border)] flex justify-between items-center bg-white/[0.02]">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-[var(--accent)]/10 rounded-[2px] text-[var(--accent)]">
+                  <Sparkles size={20} />
+                </div>
+                <div>
+                  <h3 className="font-serif font-bold text-lg">Oráculo de IA</h3>
+                  <p className="label">MUSA INSPIRADORA</p>
+                </div>
+              </div>
+              <button onClick={() => setAiPanelOpen(false)} className="p-2 hover:bg-white/5 rounded-[2px] transition-colors">
+                <X size={20} />
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              <div className="text-xs uppercase font-bold tracking-widest opacity-50">
-                Resultado: {aiAction && t[aiAction]}
+            
+            <div className="flex-1 overflow-y-auto p-8 space-y-8 custom-scrollbar">
+              <div className="grid grid-cols-2 gap-3">
+                <button onClick={() => handleAiAction('continue')} className="flex flex-col items-center gap-3 p-4 bg-white/5 rounded-[2px] hover:bg-[var(--accent)]/10 border border-transparent hover:border-[var(--accent)]/20 transition-all group">
+                  <PenTool size={18} className="text-[var(--accent)]" />
+                  <span className="text-[9px] font-bold uppercase tracking-widest">Continuar</span>
+                </button>
+                <button onClick={() => handleAiAction('review')} className="flex flex-col items-center gap-3 p-4 bg-white/5 rounded-[2px] hover:bg-[var(--accent)]/10 border border-transparent hover:border-[var(--accent)]/20 transition-all group">
+                  <Eye size={18} className="text-[var(--accent)]" />
+                  <span className="text-[9px] font-bold uppercase tracking-widest">Revisar</span>
+                </button>
+                <button onClick={() => handleAiAction('summarize')} className="flex flex-col items-center gap-3 p-4 bg-white/5 rounded-[2px] hover:bg-[var(--accent)]/10 border border-transparent hover:border-[var(--accent)]/20 transition-all group">
+                  <QuoteIcon size={18} className="text-[var(--accent)]" />
+                  <span className="text-[9px] font-bold uppercase tracking-widest">Resumir</span>
+                </button>
+                <button onClick={() => handleAiAction('rewrite')} className="flex flex-col items-center gap-3 p-4 bg-white/5 rounded-[2px] hover:bg-[var(--accent)]/10 border border-transparent hover:border-[var(--accent)]/20 transition-all group">
+                  <Zap size={18} className="text-[var(--accent)]" />
+                  <span className="text-[9px] font-bold uppercase tracking-widest">Reescrever</span>
+                </button>
               </div>
-              {isAiLoading ? (
-                <div className="flex flex-col items-center justify-center py-12 gap-4 text-center">
-                  <Loader2 className="animate-spin text-[var(--accent)]" size={32} />
-                  <p className="text-sm italic opacity-60">{t.aiThinking}</p>
-                </div>
-              ) : (
-                <div className="text-sm leading-relaxed font-serif whitespace-pre-wrap bg-[var(--bg)] p-4 rounded-xl border border-[var(--border)]">
-                  {aiResult}
-                </div>
-              )}
+
+              <div className="h-px bg-[var(--border)]" />
+
+              <div className="space-y-4">
+                <p className="label">RESULTADO</p>
+                {isAiLoading ? (
+                  <div className="flex flex-col items-center justify-center py-16 gap-6 text-center">
+                    <Loader2 className="animate-spin text-[var(--accent)]" size={40} />
+                    <p className="text-sm italic font-serif text-white/40">O oráculo está consultando as estrelas...</p>
+                  </div>
+                ) : aiResult ? (
+                  <div className="text-lg leading-relaxed font-serif whitespace-pre-wrap bg-white/[0.02] p-6 rounded-[2px] border border-[var(--border)] text-white/60">
+                    {aiResult}
+                  </div>
+                ) : (
+                  <div className="p-12 text-center space-y-4 opacity-20">
+                    <Sparkles size={40} className="mx-auto" />
+                    <p className="text-xs italic font-serif">Selecione uma ação para despertar a IA</p>
+                  </div>
+                )}
+              </div>
             </div>
+
             {!isAiLoading && aiResult && (
-              <div className="p-4 border-t border-[var(--border)] flex gap-2">
+              <div className="p-8 border-t border-[var(--border)] flex gap-3 bg-white/[0.02]">
                 <button 
                   onClick={applyAiResult}
-                  className="flex-1 inkwell-button flex items-center justify-center gap-2 py-2"
+                  className="flex-1 btn-primary flex items-center justify-center gap-3 py-4"
                 >
-                  <Check size={16} />
-                  {t.apply}
+                  <Check size={18} />
+                  <span className="uppercase tracking-widest text-[10px] font-bold">Aplicar</span>
                 </button>
                 <button 
-                  onClick={() => setAiPanelOpen(false)}
-                  className="flex-1 p-2 border border-[var(--border)] rounded-xl hover:bg-red-500/10 hover:text-red-500 transition-all text-sm font-bold"
+                  onClick={() => setAiResult('')}
+                  className="p-4 border border-[var(--border)] rounded-[2px] hover:bg-red-500/10 hover:text-red-500 transition-all"
                 >
-                  {t.discard}
+                  <Trash2 size={18} />
                 </button>
               </div>
             )}
-          </div>
+          </motion.div>
         )}
       </div>
 
       {/* Footer Stats */}
       {!isFocusMode && (
-        <footer className="flex flex-wrap items-center justify-between gap-4 px-6 py-3 bg-[var(--card)] rounded-xl border border-[var(--border)] shadow-sm text-[10px] uppercase font-bold tracking-widest opacity-60">
-          <div className="flex gap-6">
-            <span>{wordCount} {t.words}</span>
-            <span>{charCount} {t.chars}</span>
-            <span>{paragraphCount} {t.paragraphs}</span>
-            <span>{readingTime} {t.readingTime}</span>
+        <footer className="flex flex-wrap items-center justify-between gap-6 px-10 py-5 card-ink">
+          <div className="flex gap-10">
+            <div className="flex flex-col">
+              <span className="label">PALAVRAS</span>
+              <span className="font-mono text-sm font-bold text-[var(--accent)]">{wordCount}</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="label">CARACTERES</span>
+              <span className="font-mono text-sm font-bold text-[var(--accent)]">{charCount}</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="label">LEITURA</span>
+              <span className="font-mono text-sm font-bold text-[var(--accent)]">{readingTime} min</span>
+            </div>
           </div>
-          <div className="flex items-center gap-4">
+          
+          <div className="flex items-center gap-6">
             {lastSaved && (
-              <span className="text-[var(--accent)]">
-                Salvo às {new Date(lastSaved).toLocaleTimeString()}
-              </span>
+              <div className="text-right">
+                <p className="label">ÚLTIMO SALVAMENTO</p>
+                <p className="font-mono text-[10px] font-bold text-[var(--accent)]/60">{new Date(lastSaved).toLocaleTimeString()}</p>
+              </div>
             )}
+            <div className="w-2 h-2 rounded-full bg-[var(--accent)] shadow-[0_0_10px_var(--accent-glow)]" />
           </div>
         </footer>
       )}
@@ -396,13 +454,13 @@ export const Editor: React.FC<EditorProps> = ({ stories, setStories, settings, t
         </button>
       )}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-[var(--card)] p-6 rounded-2xl border border-[var(--border)] max-w-sm w-full space-y-4">
-            <h3 className="text-lg font-bold">Excluir história?</h3>
-            <p className="opacity-60">Esta ação não pode ser desfeita.</p>
-            <div className="flex gap-2 justify-end">
-              <button onClick={() => setShowDeleteConfirm(false)} className="px-4 py-2 hover:bg-[var(--bg)] rounded-lg">Cancelar</button>
-              <button onClick={confirmDelete} className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">Excluir</button>
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="card-ink p-8 max-w-sm w-full space-y-6">
+            <h3 className="text-2xl font-bold font-serif text-red-500">Excluir história?</h3>
+            <p className="opacity-60 font-sans">Esta ação não pode ser desfeita e a história será perdida para sempre no vazio.</p>
+            <div className="flex gap-3 justify-end pt-4 border-t border-[var(--border)]">
+              <button onClick={() => setShowDeleteConfirm(false)} className="btn-ghost">Cancelar</button>
+              <button onClick={confirmDelete} className="btn-primary !bg-red-500/10 !text-red-500 !border-red-500/20 hover:!bg-red-500 hover:!text-white">Excluir</button>
             </div>
           </div>
         </div>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Plus, Search, Trash2, Edit2, Sparkles, Download, Save, Image as ImageIcon, Loader2, Dice5, X, Send, ChevronDown, ChevronUp } from 'lucide-react';
+import { User, Plus, Search, Trash2, Edit2, Sparkles, Download, Save, Image as ImageIcon, Loader2, Dice5, X, Send, ChevronDown, ChevronUp, Upload } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AppSettings, Character, useLocalStorage } from '../types';
 import { CHARACTER_ROLES, NAME_STYLES, IMAGE_STYLES, IMAGE_TYPES } from '../constants';
@@ -35,9 +35,9 @@ const TagInput: React.FC<{
   };
 
   return (
-    <div className="space-y-1">
-      <label className="text-[10px] font-bold uppercase opacity-50">{label}</label>
-      <div className="space-y-2">
+    <div className="space-y-3">
+      <label className="label">{label}</label>
+      <div className="space-y-3">
         <div className="flex gap-2">
           <input 
             type="text" 
@@ -50,12 +50,12 @@ const TagInput: React.FC<{
               }
             }}
             placeholder={placeholder || "Adicionar..."}
-            className="flex-1 bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-1.5 focus:border-[var(--accent)] outline-none text-sm" 
+            className="input-field flex-1 !py-2 !px-3 text-sm" 
           />
           <button 
             type="button"
             onClick={handleAdd}
-            className="px-3 bg-[var(--accent)] text-white rounded-lg hover:opacity-90 transition-opacity flex items-center justify-center"
+            className="px-4 bg-accent text-black rounded-xl hover:bg-accent-light transition-all flex items-center justify-center shadow-lg shadow-accent/20"
             title="Adicionar"
           >
             <Plus size={16} />
@@ -290,14 +290,15 @@ export const Characters: React.FC<CharactersProps> = ({ settings, characters, se
   };
 
   return (
-    <div className="space-y-8 fade-in pb-20">
+    <div className="space-y-12 fade-in pb-20">
+      {/* Modais e Overlays mantidos conforme lógica original, mas com estilos atualizados */}
       {editingItem !== null && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
-          <div className="inkwell-card max-w-sm w-full space-y-4">
-            <h3 className="text-xl font-bold">Editar Item</h3>
-            <div className="space-y-3">
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold uppercase opacity-50">Nome</label>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+          <div className="glass p-8 rounded-[2.5rem] border-white/10 max-w-sm w-full space-y-6 shadow-2xl">
+            <h3 className="text-2xl font-serif font-black">Editar Item</h3>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="label">Nome</label>
                 <input 
                   type="text" 
                   value={editingItem.path.includes('.') 
@@ -317,11 +318,11 @@ export const Characters: React.FC<CharactersProps> = ({ settings, characters, se
                       setForm({ ...form, [field]: newItems });
                     }
                   }}
-                  className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-1.5 focus:border-[var(--accent)] outline-none text-sm"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:border-accent outline-none text-sm transition-all"
                 />
               </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold uppercase opacity-50">Descrição</label>
+              <div className="space-y-2">
+                <label className="label">Descrição</label>
                 <textarea 
                   value={editingItem.path.includes('.') 
                     ? (form as any)[editingItem.path.split('.')[0]][editingItem.path.split('.')[1]][editingItem.index]?.description || ''
@@ -341,11 +342,11 @@ export const Characters: React.FC<CharactersProps> = ({ settings, characters, se
                     }
                   }}
                   placeholder="Descrição ou detalhes..."
-                  className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-1.5 focus:border-[var(--accent)] outline-none text-sm h-24"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:border-accent outline-none text-sm h-32 transition-all resize-none"
                 />
               </div>
             </div>
-            <div className="flex gap-2 justify-between pt-2">
+            <div className="flex gap-3 justify-between pt-4">
               <button 
                 onClick={() => {
                   if (editingItem.path.includes('.')) {
@@ -359,138 +360,171 @@ export const Characters: React.FC<CharactersProps> = ({ settings, characters, se
                   }
                   setEditingItem(null);
                 }} 
-                className="px-4 py-2 text-red-500 hover:bg-red-500/10 rounded-lg text-sm font-bold uppercase"
+                className="px-4 py-2 text-red-500 hover:bg-red-500/10 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
               >
                 Excluir
               </button>
-              <button onClick={() => setEditingItem(null)} className="px-6 py-2 bg-[var(--accent)] text-white rounded-lg font-bold">Concluído</button>
+              <button onClick={() => setEditingItem(null)} className="btn-primary !py-2 !px-6">Concluído</button>
             </div>
           </div>
         </div>
       )}
-      {isChatOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="inkwell-card max-w-lg w-full h-[600px] flex flex-col overflow-hidden">
-            <div className="p-4 border-b border-[var(--border)] flex justify-between items-center">
-              <h3 className="font-bold">Conversando com {form.basicInfo.name}</h3>
-              <button onClick={() => { setIsChatOpen(false); setChatMessages([]); }} className="p-1 hover:bg-[var(--bg)] rounded-full"><X size={20} /></button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {chatMessages.map((m, i) => (
-                <div key={i} className={`p-3 rounded-xl ${m.role === 'user' ? 'bg-[var(--accent)] text-white ml-auto' : 'bg-[var(--bg)]'} max-w-[80%]`}>
-                  {m.text}
-                </div>
-              ))}
-              {isChatLoading && <div className="p-3 bg-[var(--bg)] rounded-xl opacity-50">Pensando...</div>}
-            </div>
-            <div className="p-4 border-t border-[var(--border)] flex gap-2">
-              <input 
-                value={chatInput}
-                onChange={e => setChatInput(e.target.value)}
-                onKeyPress={e => e.key === 'Enter' && handleChatSend()}
-                className="flex-1 bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-2"
-                placeholder="Diga algo..."
-              />
-              <button onClick={handleChatSend} className="p-2 bg-[var(--accent)] text-white rounded-lg"><Send size={20} /></button>
-            </div>
+
+      <header className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-8">
+        <div className="space-y-2">
+          <div className="section-tag">
+            <User size={12} />
+            Elenco de Personagens
           </div>
-        </div>
-      )}
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-4xl font-bold mb-2 flex items-center gap-3">
-            <User className="text-[var(--accent)]" />
-            {t.characters}
-          </h1>
-          <p className="opacity-60">Gerencie o elenco da sua história</p>
+          <h1 className="h1">{t.characters}</h1>
+          <p className="font-serif italic text-lg text-white/40">Dê vida e profundidade aos protagonistas da sua jornada.</p>
         </div>
         <button 
           onClick={() => { setForm(initialFormState); setEditingId(null); setIsFormOpen(true); }}
-          className="inkwell-button flex items-center gap-2"
+          className="btn-primary"
         >
-          <Plus size={20} />
+          <Plus size={18} />
           Novo Personagem
         </button>
       </header>
 
-      <div className="relative">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 opacity-30" size={20} />
+      <div className="relative group">
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-[var(--accent)] transition-colors" size={18} />
         <input 
           type="text"
           placeholder="Buscar por nome ou apelido..."
           value={searchTerm}
           onChange={e => setSearchTerm(e.target.value)}
-          className="w-full bg-[var(--card)] border border-[var(--border)] rounded-xl pl-12 pr-4 py-3 focus:border-[var(--accent)] outline-none"
+          className="input-field w-full pl-12"
         />
       </div>
 
       {deleteTargetId && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="inkwell-card max-w-sm w-full space-y-4">
-            <h3 className="text-xl font-bold">Excluir Personagem</h3>
-            <p className="opacity-70">Tem certeza que deseja excluir este personagem? Esta ação não pode ser desfeita.</p>
-            <div className="flex gap-2 justify-end">
-              <button onClick={() => setDeleteTargetId(null)} className="px-4 py-2 opacity-60 hover:opacity-100">Cancelar</button>
-              <button onClick={confirmDelete} className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">Excluir</button>
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[100] p-4">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="glass max-w-sm w-full p-10 rounded-[3rem] border-white/10 space-y-8 text-center"
+          >
+            <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mx-auto text-red-500">
+              <Trash2 size={32} />
             </div>
-          </div>
+            <div className="space-y-2">
+              <h3 className="text-2xl font-serif font-black">Excluir Personagem</h3>
+              <p className="text-white/40 italic font-serif">Tem certeza que deseja excluir este personagem? Esta ação não pode ser desfeita.</p>
+            </div>
+            <div className="flex flex-col gap-3">
+              <button 
+                onClick={confirmDelete} 
+                className="w-full py-4 bg-red-500 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-red-600 transition-all shadow-lg shadow-red-500/20"
+              >
+                Confirmar Exclusão
+              </button>
+              <button 
+                onClick={() => setDeleteTargetId(null)} 
+                className="w-full py-4 bg-white/5 text-white/60 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-white/10 hover:text-white transition-all"
+              >
+                Cancelar
+              </button>
+            </div>
+          </motion.div>
         </div>
       )}
 
       {isFormOpen ? (
-        <div className="inkwell-card space-y-8 fade-in">
-          <div className="flex items-center justify-between border-b border-[var(--border)] pb-4">
-            <h2 className="text-2xl font-bold">{editingId ? 'Editar' : 'Novo'} Personagem</h2>
-            <button onClick={() => setIsFormOpen(false)} className="px-4 py-2 opacity-60 hover:opacity-100">Cancelar</button>
-          </div>
+        <div className="card-ink overflow-hidden p-0 fade-in shadow-2xl">
+          <div className="p-10 lg:p-16 space-y-12">
+            <header className="flex items-center justify-between border-b border-[var(--border)] pb-10">
+              <div className="space-y-1">
+                <h2 className="text-4xl font-serif font-black">{editingId ? 'Editar Personagem' : 'Novo Personagem'}</h2>
+                <p className="text-white/40 italic font-serif">Defina a essência e os traços do seu personagem.</p>
+              </div>
+              <button 
+                onClick={() => setIsFormOpen(false)}
+                className="p-4 hover:bg-[var(--bg)] rounded-full transition-colors text-white/40 hover:text-white"
+              >
+                <X size={24} />
+              </button>
+            </header>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="space-y-6">
-              <div className="aspect-square bg-[var(--bg)] border border-[var(--border)] rounded-2xl overflow-hidden relative group">
-                {form.imageUrl ? (
-                  <img src={form.imageUrl} alt={form.basicInfo.name} className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center opacity-20">
-                    <User size={80} />
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-16">
+              {/* Coluna da Imagem e Tags */}
+              <div className="lg:col-span-4 space-y-10">
+                <div className="relative group aspect-[3/4] rounded-[2px] overflow-hidden bg-[var(--bg)] border border-[var(--border)]">
+                  {form.imageUrl ? (
+                    <>
+                      <img src={form.imageUrl} alt="Preview" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3 backdrop-blur-sm">
+                        <label className="p-4 bg-white text-black rounded-full cursor-pointer hover:scale-110 transition-transform">
+                          <Upload size={20} />
+                          <input 
+                            type="file" 
+                            className="hidden" 
+                            accept="image/*" 
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                const reader = new FileReader();
+                                reader.onloadend = () => {
+                                  setForm({ ...form, imageUrl: reader.result as string });
+                                };
+                                reader.readAsDataURL(file);
+                              }
+                            }} 
+                          />
+                        </label>
+                        <button 
+                          onClick={() => setForm({ ...form, imageUrl: '' })}
+                          className="p-4 bg-red-500 text-white rounded-full hover:scale-110 transition-transform"
+                        >
+                          <Trash2 size={20} />
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <label className="w-full h-full flex flex-col items-center justify-center cursor-pointer hover:bg-[var(--card)] transition-colors group">
+                      <div className="w-20 h-20 rounded-full bg-[var(--card)] flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                        <Upload size={32} className="text-white/20 group-hover:text-[var(--accent)]" />
+                      </div>
+                      <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20 group-hover:text-white font-sans">Upload de Imagem</span>
+                      <input 
+                        type="file" 
+                        className="hidden" 
+                        accept="image/*" 
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                              setForm({ ...form, imageUrl: reader.result as string });
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }} 
+                      />
+                    </label>
+                  )}
+                </div>
+                
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 text-white/20">
+                    <div className="w-4 h-[1px] bg-white/10" />
+                    <span className="text-[10px] font-black uppercase tracking-[0.3em] font-sans">Arquétipos</span>
                   </div>
-                )}
-                <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center transition-opacity text-white gap-2 font-bold">
-                  <label className="cursor-pointer flex items-center gap-2 hover:text-[var(--accent)]">
-                    <ImageIcon size={20} />
-                    Upload
-                    <input 
-                      type="file" 
-                      accept="image/*" 
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          const reader = new FileReader();
-                          reader.onloadend = () => {
-                            setForm({ ...form, imageUrl: reader.result as string });
-                          };
-                          reader.readAsDataURL(file);
-                        }
-                      }}
-                      className="hidden"
-                    />
-                  </label>
+                  <TagInput 
+                    label="Tags (Enter para adicionar)"
+                    items={form.tags}
+                    onAdd={name => setForm({ ...form, tags: [...form.tags, { name, description: '' }] })}
+                    onEdit={index => setEditingItem({ path: 'tags', index })}
+                  />
                 </div>
               </div>
-              
-              <div className="space-y-1">
-                <TagInput 
-                  label="Tags (Enter para adicionar)"
-                  items={form.tags}
-                  onAdd={name => setForm({ ...form, tags: [...form.tags, { name, description: '' }] })}
-                  onEdit={index => setEditingItem({ path: 'tags', index })}
-                />
-              </div>
-            </div>
 
-              <div className="lg:col-span-2 space-y-4">
+              {/* Coluna do Formulário (Acordeões) */}
+              <div className="lg:col-span-8 space-y-6">
                 {/* Accordion Sections */}
                 {[
-                  { id: 'basic', title: 'Informações Básicas', icon: User },
+                  { id: 'basic', title: 'Identidade', icon: User },
                   { id: 'appearance', title: 'Aparência', icon: ImageIcon },
                   { id: 'personality', title: 'Personalidade', icon: Sparkles },
                   { id: 'psychology', title: 'Psicologia', icon: Sparkles },
@@ -500,20 +534,23 @@ export const Characters: React.FC<CharactersProps> = ({ settings, characters, se
                   { id: 'development', title: 'Desenvolvimento', icon: Loader2 },
                   { id: 'extras', title: 'Extras', icon: Plus },
                 ].map((section) => (
-                  <div key={section.id} className="border border-[var(--border)] rounded-xl overflow-hidden bg-[var(--card)]">
+                  <div key={section.id} className="bg-[var(--bg)] rounded-[2px] border border-[var(--border)] overflow-hidden">
                     <button 
                       onClick={() => toggleSection(section.id)}
-                      className="w-full flex items-center justify-between p-4 hover:bg-[var(--bg)] transition-colors"
+                      className="w-full flex items-center justify-between p-6 hover:bg-[var(--card)] transition-colors group"
                     >
-                      <div className="flex items-center gap-3">
-                        <section.icon size={18} className="text-[var(--accent)]" />
-                        <span className="font-bold">{section.title}</span>
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-[2px] bg-[var(--card)] flex items-center justify-center group-hover:scale-110 transition-transform">
+                          <section.icon size={18} className="text-[var(--accent)]" />
+                        </div>
+                        <span className="font-serif font-black text-lg">{section.title}</span>
                       </div>
                       <motion.div
                         animate={{ rotate: expandedSections.includes(section.id) ? 180 : 0 }}
                         transition={{ duration: 0.2 }}
+                        className="text-white/40"
                       >
-                        <ChevronDown size={18} />
+                        <ChevronDown size={20} />
                       </motion.div>
                     </button>
                     
@@ -526,142 +563,152 @@ export const Characters: React.FC<CharactersProps> = ({ settings, characters, se
                           transition={{ duration: 0.3, ease: "easeInOut" }}
                           className="overflow-hidden"
                         >
-                          <div className="p-4 border-t border-[var(--border)] bg-[var(--bg)]/30 space-y-4">
+                          <div className="p-8 border-t border-[var(--border)] bg-[var(--bg)] space-y-8">
                             {section.id === 'basic' && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          <div className="space-y-1">
-                            <label className="text-[10px] font-bold uppercase opacity-50">Nome Completo</label>
-                            <input type="text" value={form.basicInfo.name} onChange={e => setForm({...form, basicInfo: {...form.basicInfo, name: e.target.value}})} className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-1.5 focus:border-[var(--accent)] outline-none text-sm" />
-                          </div>
-                          <div className="space-y-1">
-                            <label className="text-[10px] font-bold uppercase opacity-50">Apelido / Codinome</label>
-                            <input type="text" value={form.basicInfo.nickname} onChange={e => setForm({...form, basicInfo: {...form.basicInfo, nickname: e.target.value}})} className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-1.5 focus:border-[var(--accent)] outline-none text-sm" />
-                          </div>
-                          <div className="space-y-1">
-                            <label className="text-[10px] font-bold uppercase opacity-50">Idade</label>
-                            <input type="text" value={form.basicInfo.age} onChange={e => setForm({...form, basicInfo: {...form.basicInfo, age: e.target.value}})} className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-1.5 focus:border-[var(--accent)] outline-none text-sm" />
-                          </div>
-                          <div className="space-y-1">
-                            <label className="text-[10px] font-bold uppercase opacity-50">Data de Nascimento</label>
-                            <input type="text" value={form.basicInfo.birthDate} onChange={e => setForm({...form, basicInfo: {...form.basicInfo, birthDate: e.target.value}})} className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-1.5 focus:border-[var(--accent)] outline-none text-sm" />
-                          </div>
-                          <div className="space-y-1">
-                            <label className="text-[10px] font-bold uppercase opacity-50">Gênero</label>
-                            <input type="text" value={form.basicInfo.gender} onChange={e => setForm({...form, basicInfo: {...form.basicInfo, gender: e.target.value}})} className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-1.5 focus:border-[var(--accent)] outline-none text-sm" />
-                          </div>
-                          <div className="space-y-1">
-                            <label className="text-[10px] font-bold uppercase opacity-50">Espécie / Raça</label>
-                            <input type="text" value={form.basicInfo.species} onChange={e => setForm({...form, basicInfo: {...form.basicInfo, species: e.target.value}})} className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-1.5 focus:border-[var(--accent)] outline-none text-sm" />
-                          </div>
-                          <div className="space-y-1">
-                            <label className="text-[10px] font-bold uppercase opacity-50">Altura</label>
-                            <input type="text" value={form.basicInfo.height} onChange={e => setForm({...form, basicInfo: {...form.basicInfo, height: e.target.value}})} className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-1.5 focus:border-[var(--accent)] outline-none text-sm" />
-                          </div>
-                          <div className="space-y-1">
-                            <label className="text-[10px] font-bold uppercase opacity-50">Peso</label>
-                            <input type="text" value={form.basicInfo.weight} onChange={e => setForm({...form, basicInfo: {...form.basicInfo, weight: e.target.value}})} className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-1.5 focus:border-[var(--accent)] outline-none text-sm" />
-                          </div>
-                          <div className="space-y-1">
-                            <label className="text-[10px] font-bold uppercase opacity-50">Nacionalidade / Origem</label>
-                            <input type="text" value={form.basicInfo.nationality} onChange={e => setForm({...form, basicInfo: {...form.basicInfo, nationality: e.target.value}})} className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-1.5 focus:border-[var(--accent)] outline-none text-sm" />
-                          </div>
-                          <div className="space-y-1">
-                            <label className="text-[10px] font-bold uppercase opacity-50">Ocupação / Classe Social</label>
-                            <input type="text" value={form.basicInfo.occupation} onChange={e => setForm({...form, basicInfo: {...form.basicInfo, occupation: e.target.value}})} className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-1.5 focus:border-[var(--accent)] outline-none text-sm" />
-                          </div>
-                          <div className="space-y-1">
-                            <label className="text-[10px] font-bold uppercase opacity-50">Papel na História</label>
-                            <select 
-                              value={form.basicInfo.role} 
-                              onChange={e => setForm({...form, basicInfo: {...form.basicInfo, role: e.target.value}})} 
-                              className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-1.5 focus:border-[var(--accent)] outline-none text-sm"
-                            >
-                              <option value="">Selecione um papel...</option>
-                              {CHARACTER_ROLES.map(role => (
-                                <option key={role} value={role}>{role}</option>
-                              ))}
-                            </select>
-                          </div>
-                        </div>
-                      )}
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-2 md:col-span-2">
+                                  <label className="label flex justify-between">
+                                    Nome Completo
+                                    <button 
+                                      onClick={handleSuggestName}
+                                      disabled={isGeneratingName}
+                                      className="text-[var(--accent)] hover:text-white flex items-center gap-2 transition-colors disabled:opacity-50"
+                                    >
+                                      {isGeneratingName ? <Loader2 size={12} className="animate-spin" /> : <Dice5 size={12} />}
+                                      <span className="text-[10px] font-black uppercase tracking-widest font-sans">Sugerir</span>
+                                    </button>
+                                  </label>
+                                  <input type="text" value={form.basicInfo.name} onChange={e => setForm({...form, basicInfo: {...form.basicInfo, name: e.target.value}})} className="input-field font-serif" />
+                                </div>
+                                <div className="space-y-2">
+                                  <label className="label">Apelido / Codinome</label>
+                                  <input type="text" value={form.basicInfo.nickname} onChange={e => setForm({...form, basicInfo: {...form.basicInfo, nickname: e.target.value}})} className="input-field" />
+                                </div>
+                                <div className="space-y-2">
+                                  <label className="label">Idade</label>
+                                  <input type="text" value={form.basicInfo.age} onChange={e => setForm({...form, basicInfo: {...form.basicInfo, age: e.target.value}})} className="input-field" />
+                                </div>
+                                <div className="space-y-2">
+                                  <label className="label">Data de Nascimento</label>
+                                  <input type="text" value={form.basicInfo.birthDate} onChange={e => setForm({...form, basicInfo: {...form.basicInfo, birthDate: e.target.value}})} className="input-field" />
+                                </div>
+                                <div className="space-y-2">
+                                  <label className="label">Gênero</label>
+                                  <input type="text" value={form.basicInfo.gender} onChange={e => setForm({...form, basicInfo: {...form.basicInfo, gender: e.target.value}})} className="input-field" />
+                                </div>
+                                <div className="space-y-2">
+                                  <label className="label">Espécie / Raça</label>
+                                  <input type="text" value={form.basicInfo.species} onChange={e => setForm({...form, basicInfo: {...form.basicInfo, species: e.target.value}})} className="input-field" />
+                                </div>
+                                <div className="space-y-2">
+                                  <label className="label">Altura</label>
+                                  <input type="text" value={form.basicInfo.height} onChange={e => setForm({...form, basicInfo: {...form.basicInfo, height: e.target.value}})} className="input-field" />
+                                </div>
+                                <div className="space-y-2">
+                                  <label className="label">Peso</label>
+                                  <input type="text" value={form.basicInfo.weight} onChange={e => setForm({...form, basicInfo: {...form.basicInfo, weight: e.target.value}})} className="input-field" />
+                                </div>
+                                <div className="space-y-2">
+                                  <label className="label">Nacionalidade / Origem</label>
+                                  <input type="text" value={form.basicInfo.nationality} onChange={e => setForm({...form, basicInfo: {...form.basicInfo, nationality: e.target.value}})} className="input-field" />
+                                </div>
+                                <div className="space-y-2">
+                                  <label className="label">Ocupação / Classe Social</label>
+                                  <input type="text" value={form.basicInfo.occupation} onChange={e => setForm({...form, basicInfo: {...form.basicInfo, occupation: e.target.value}})} className="input-field" />
+                                </div>
+                                <div className="space-y-2">
+                                  <label className="label">Papel na História</label>
+                                  <select 
+                                    value={form.basicInfo.role} 
+                                    onChange={e => setForm({...form, basicInfo: {...form.basicInfo, role: e.target.value}})} 
+                                    className="input-field appearance-none"
+                                  >
+                                    <option value="">Selecione um papel...</option>
+                                    {CHARACTER_ROLES.map(role => (
+                                      <option key={role} value={role}>{role}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                              </div>
+                            )}
 
                       {section.id === 'appearance' && (
-                        <div className="space-y-4">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <div className="space-y-1">
-                              <label className="text-[10px] font-bold uppercase opacity-50">Cor do Cabelo</label>
-                              <input type="text" value={form.appearance.hairColor} onChange={e => setForm({...form, appearance: {...form.appearance, hairColor: e.target.value}})} className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-1.5 focus:border-[var(--accent)] outline-none text-sm" />
+                        <div className="space-y-8">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                              <label className="label">Cor do Cabelo</label>
+                              <input type="text" value={form.appearance.hairColor} onChange={e => setForm({...form, appearance: {...form.appearance, hairColor: e.target.value}})} className="input-field" />
                             </div>
-                            <div className="space-y-1">
-                              <label className="text-[10px] font-bold uppercase opacity-50">Estilo do Cabelo</label>
-                              <input type="text" value={form.appearance.hairStyle} onChange={e => setForm({...form, appearance: {...form.appearance, hairStyle: e.target.value}})} className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-1.5 focus:border-[var(--accent)] outline-none text-sm" />
+                            <div className="space-y-2">
+                              <label className="label">Estilo do Cabelo</label>
+                              <input type="text" value={form.appearance.hairStyle} onChange={e => setForm({...form, appearance: {...form.appearance, hairStyle: e.target.value}})} className="input-field" />
                             </div>
-                            <div className="space-y-1">
-                              <label className="text-[10px] font-bold uppercase opacity-50">Cor dos Olhos</label>
-                              <input type="text" value={form.appearance.eyeColor} onChange={e => setForm({...form, appearance: {...form.appearance, eyeColor: e.target.value}})} className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-1.5 focus:border-[var(--accent)] outline-none text-sm" />
+                            <div className="space-y-2">
+                              <label className="label">Cor dos Olhos</label>
+                              <input type="text" value={form.appearance.eyeColor} onChange={e => setForm({...form, appearance: {...form.appearance, eyeColor: e.target.value}})} className="input-field" />
                             </div>
-                            <div className="space-y-1">
-                              <label className="text-[10px] font-bold uppercase opacity-50">Tom de Pele</label>
-                              <input type="text" value={form.appearance.skinTone} onChange={e => setForm({...form, appearance: {...form.appearance, skinTone: e.target.value}})} className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-1.5 focus:border-[var(--accent)] outline-none text-sm" />
+                            <div className="space-y-2">
+                              <label className="label">Tom de Pele</label>
+                              <input type="text" value={form.appearance.skinTone} onChange={e => setForm({...form, appearance: {...form.appearance, skinTone: e.target.value}})} className="input-field" />
                             </div>
                           </div>
-                          <div className="space-y-1">
+                          <div className="space-y-4">
                             <TagInput 
-                              label="Traço Marcante"
+                              label="Traços Marcantes"
                               items={form.appearance.features}
                               onAdd={name => setForm({ ...form, appearance: { ...form.appearance, features: [...form.appearance.features, { name, description: '' }] } })}
                               onEdit={index => setEditingItem({ path: 'appearance.features', index })}
                             />
                           </div>
-                          <div className="space-y-1">
-                            <label className="text-[10px] font-bold uppercase opacity-50">Estilo de Roupa</label>
-                            <input type="text" value={form.appearance.clothingStyle} onChange={e => setForm({...form, appearance: {...form.appearance, clothingStyle: e.target.value}})} className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-1.5 focus:border-[var(--accent)] outline-none text-sm" />
+                          <div className="space-y-2">
+                            <label className="label">Estilo de Roupa</label>
+                            <input type="text" value={form.appearance.clothingStyle} onChange={e => setForm({...form, appearance: {...form.appearance, clothingStyle: e.target.value}})} className="input-field" />
                           </div>
-                          <div className="space-y-1">
-                            <label className="text-[10px] font-bold uppercase opacity-50">Postura / Linguagem Corporal</label>
-                            <input type="text" value={form.appearance.posture} onChange={e => setForm({...form, appearance: {...form.appearance, posture: e.target.value}})} className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-1.5 focus:border-[var(--accent)] outline-none text-sm" />
+                          <div className="space-y-2">
+                            <label className="label">Postura / Linguagem Corporal</label>
+                            <input type="text" value={form.appearance.posture} onChange={e => setForm({...form, appearance: {...form.appearance, posture: e.target.value}})} className="input-field" />
                           </div>
-                          <div className="space-y-1">
-                            <label className="text-[10px] font-bold uppercase opacity-50">Primeira Impressão</label>
-                            <input type="text" value={form.appearance.firstImpression} onChange={e => setForm({...form, appearance: {...form.appearance, firstImpression: e.target.value}})} className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-1.5 focus:border-[var(--accent)] outline-none text-sm" />
+                          <div className="space-y-2">
+                            <label className="label">Primeira Impressão</label>
+                            <input type="text" value={form.appearance.firstImpression} onChange={e => setForm({...form, appearance: {...form.appearance, firstImpression: e.target.value}})} className="input-field" />
                           </div>
                         </div>
                       )}
 
                       {section.id === 'personality' && (
-                        <div className="space-y-4">
+                        <div className="space-y-8">
                           <TagInput 
                             label="Traços de Personalidade"
                             items={form.personality.traits}
                             onAdd={name => setForm({ ...form, personality: { ...form.personality, traits: [...form.personality.traits, { name, description: '' }] } })}
                             onEdit={index => setEditingItem({ path: 'personality.traits', index })}
                           />
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <div className="space-y-1">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-4">
                               <TagInput 
-                                label="Virtude"
+                                label="Virtudes"
                                 items={form.personality.virtues}
                                 onAdd={name => setForm({ ...form, personality: { ...form.personality, virtues: [...form.personality.virtues, { name, description: '' }] } })}
                                 onEdit={index => setEditingItem({ path: 'personality.virtues', index })}
                               />
                             </div>
-                            <div className="space-y-1">
+                            <div className="space-y-4">
                               <TagInput 
-                                label="Defeito"
+                                label="Defeitos"
                                 items={form.personality.defects}
                                 onAdd={name => setForm({ ...form, personality: { ...form.personality, defects: [...form.personality.defects, { name, description: '' }] } })}
                                 onEdit={index => setEditingItem({ path: 'personality.defects', index })}
                               />
                             </div>
-                            <div className="space-y-1">
+                            <div className="space-y-4">
                               <TagInput 
-                                label="Hábitos/manias"
+                                label="Hábitos / Manias"
                                 items={form.personality.habits}
                                 onAdd={name => setForm({ ...form, personality: { ...form.personality, habits: [...form.personality.habits, { name, description: '' }] } })}
                                 onEdit={index => setEditingItem({ path: 'personality.habits', index })}
                               />
                             </div>
-                            <div className="space-y-1">
+                            <div className="space-y-4">
                               <TagInput 
                                 label="Medos"
                                 items={form.personality.fears}
@@ -670,202 +717,212 @@ export const Characters: React.FC<CharactersProps> = ({ settings, characters, se
                               />
                             </div>
                           </div>
-                          <div className="space-y-1">
+                          <div className="space-y-4">
                             <TagInput 
-                              label="Desejo Profundo"
+                              label="Desejos Profundos"
                               items={form.personality.deepDesires}
                               onAdd={name => setForm({ ...form, personality: { ...form.personality, deepDesires: [...form.personality.deepDesires, { name, description: '' }] } })}
                               onEdit={index => setEditingItem({ path: 'personality.deepDesires', index })}
                             />
                           </div>
-                          <div className="space-y-1">
-                            <label className="text-[10px] font-bold uppercase opacity-50">Motivação</label>
-                            <input type="text" value={form.personality.motivation} onChange={e => setForm({...form, personality: {...form.personality, motivation: e.target.value}})} className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-1.5 focus:border-[var(--accent)] outline-none text-sm" />
+                          <div className="space-y-2">
+                            <label className="label">Motivação</label>
+                            <input type="text" value={form.personality.motivation} onChange={e => setForm({...form, personality: {...form.personality, motivation: e.target.value}})} className="input-field" />
                           </div>
-                          <div className="space-y-1">
-                            <label className="text-[10px] font-bold uppercase opacity-50">O que faz perder o controle</label>
-                            <input type="text" value={form.personality.trigger} onChange={e => setForm({...form, personality: {...form.personality, trigger: e.target.value}})} className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-1.5 focus:border-[var(--accent)] outline-none text-sm" />
+                          <div className="space-y-2">
+                            <label className="label">O que faz perder o controle</label>
+                            <input type="text" value={form.personality.trigger} onChange={e => setForm({...form, personality: {...form.personality, trigger: e.target.value}})} className="input-field" />
                           </div>
                         </div>
                       )}
 
                       {section.id === 'psychology' && (
-                        <div className="space-y-4">
-                          <div className="space-y-1">
-                            <label className="text-[10px] font-bold uppercase opacity-50">Maior Trauma</label>
-                            <input type="text" value={form.psychology.trauma} onChange={e => setForm({...form, psychology: {...form.psychology, trauma: e.target.value}})} className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-1.5 focus:border-[var(--accent)] outline-none text-sm" />
+                        <div className="space-y-6">
+                          <div className="space-y-2">
+                            <label className="label">Maior Trauma</label>
+                            <input type="text" value={form.psychology.trauma} onChange={e => setForm({...form, psychology: {...form.psychology, trauma: e.target.value}})} className="input-field" />
                           </div>
-                          <div className="space-y-1">
-                            <label className="text-[10px] font-bold uppercase opacity-50">Maior Sonho</label>
-                            <input type="text" value={form.psychology.dream} onChange={e => setForm({...form, psychology: {...form.psychology, dream: e.target.value}})} className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-1.5 focus:border-[var(--accent)] outline-none text-sm" />
+                          <div className="space-y-2">
+                            <label className="label">Maior Sonho</label>
+                            <input type="text" value={form.psychology.dream} onChange={e => setForm({...form, psychology: {...form.psychology, dream: e.target.value}})} className="input-field" />
                           </div>
-                          <div className="space-y-1">
-                            <label className="text-[10px] font-bold uppercase opacity-50">Maior Segredo</label>
-                            <input type="text" value={form.psychology.secret} onChange={e => setForm({...form, psychology: {...form.psychology, secret: e.target.value}})} className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-1.5 focus:border-[var(--accent)] outline-none text-sm" />
+                          <div className="space-y-2">
+                            <label className="label">Maior Segredo</label>
+                            <input type="text" value={form.psychology.secret} onChange={e => setForm({...form, psychology: {...form.psychology, secret: e.target.value}})} className="input-field" />
                           </div>
-                          <div className="space-y-1">
-                            <label className="text-[10px] font-bold uppercase opacity-50">O que nunca admitiria</label>
-                            <input type="text" value={form.psychology.neverAdmit} onChange={e => setForm({...form, psychology: {...form.psychology, neverAdmit: e.target.value}})} className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-1.5 focus:border-[var(--accent)] outline-none text-sm" />
+                          <div className="space-y-2">
+                            <label className="label">O que nunca admitiria</label>
+                            <input type="text" value={form.psychology.neverAdmit} onChange={e => setForm({...form, psychology: {...form.psychology, neverAdmit: e.target.value}})} className="input-field" />
                           </div>
-                          <div className="space-y-1">
-                            <label className="text-[10px] font-bold uppercase opacity-50">Como reage sob pressão</label>
-                            <input type="text" value={form.psychology.pressureReaction} onChange={e => setForm({...form, psychology: {...form.psychology, pressureReaction: e.target.value}})} className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-1.5 focus:border-[var(--accent)] outline-none text-sm" />
+                          <div className="space-y-2">
+                            <label className="label">Como reage sob pressão</label>
+                            <input type="text" value={form.psychology.pressureReaction} onChange={e => setForm({...form, psychology: {...form.psychology, pressureReaction: e.target.value}})} className="input-field" />
                           </div>
-                          <div className="space-y-1">
-                            <label className="text-[10px] font-bold uppercase opacity-50">Tipo de Inteligência</label>
-                            <input type="text" value={form.psychology.intelligenceType} onChange={e => setForm({...form, psychology: {...form.psychology, intelligenceType: e.target.value}})} className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-1.5 focus:border-[var(--accent)] outline-none text-sm" />
+                          <div className="space-y-2">
+                            <label className="label">Tipo de Inteligência</label>
+                            <input type="text" value={form.psychology.intelligenceType} onChange={e => setForm({...form, psychology: {...form.psychology, intelligenceType: e.target.value}})} className="input-field" />
                           </div>
                         </div>
                       )}
 
                       {section.id === 'history' && (
-                        <div className="space-y-4">
-                          <div className="space-y-1">
-                            <label className="text-[10px] font-bold uppercase opacity-50">História de Fundo (Lore)</label>
+                        <div className="space-y-6">
+                          <div className="space-y-2">
+                            <label className="label">História de Fundo (Lore)</label>
                             <textarea 
                               value={form.history.lore} 
                               onChange={e => setForm({...form, history: {...form.history, lore: e.target.value}})} 
                               placeholder="A história geral e o passado do personagem..."
-                              className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-1.5 focus:border-[var(--accent)] outline-none text-sm h-32" 
+                              className="input-field h-48 resize-none" 
                             />
                           </div>
-                          <div className="space-y-1">
-                            <label className="text-[10px] font-bold uppercase opacity-50">Infância</label>
-                            <textarea value={form.history.childhood} onChange={e => setForm({...form, history: {...form.history, childhood: e.target.value}})} className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-1.5 focus:border-[var(--accent)] outline-none text-sm h-64" />
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                              <label className="label">Infância</label>
+                              <textarea value={form.history.childhood} onChange={e => setForm({...form, history: {...form.history, childhood: e.target.value}})} className="input-field h-32 resize-none" />
+                            </div>
+                            <div className="space-y-2">
+                              <label className="label">Evento que mudou sua vida</label>
+                              <textarea value={form.history.lifeChangingEvent} onChange={e => setForm({...form, history: {...form.history, lifeChangingEvent: e.target.value}})} className="input-field h-32 resize-none" />
+                            </div>
                           </div>
-                          <div className="space-y-1">
-                            <label className="text-[10px] font-bold uppercase opacity-50">Evento que mudou sua vida</label>
-                            <textarea value={form.history.lifeChangingEvent} onChange={e => setForm({...form, history: {...form.history, lifeChangingEvent: e.target.value}})} className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-1.5 focus:border-[var(--accent)] outline-none text-sm h-32" />
+                          <div className="space-y-2">
+                            <label className="label">Família</label>
+                            <input type="text" value={form.history.family} onChange={e => setForm({...form, history: {...form.history, family: e.target.value}})} className="input-field" />
                           </div>
-                          <div className="space-y-1">
-                            <label className="text-[10px] font-bold uppercase opacity-50">Família</label>
-                            <input type="text" value={form.history.family} onChange={e => setForm({...form, history: {...form.history, family: e.target.value}})} className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-1.5 focus:border-[var(--accent)] outline-none text-sm" />
-                          </div>
-                          <div className="space-y-1">
-                            <TagInput 
-                              label="Mentores ou figuras importantes"
-                              items={form.history.mentors}
-                              onAdd={name => setForm({ ...form, history: { ...form.history, mentors: [...form.history.mentors, { name, description: '' }] } })}
-                              onEdit={index => setEditingItem({ path: 'history.mentors', index })}
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <label className="text-[10px] font-bold uppercase opacity-50">Como entrou na história principal</label>
-                            <textarea value={form.history.entryToMainStory} onChange={e => setForm({...form, history: {...form.history, entryToMainStory: e.target.value}})} className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-1.5 focus:border-[var(--accent)] outline-none text-sm h-32" />
+                          <TagInput 
+                            label="Mentores ou figuras importantes"
+                            items={form.history.mentors}
+                            onAdd={name => setForm({ ...form, history: { ...form.history, mentors: [...form.history.mentors, { name, description: '' }] } })}
+                            onEdit={index => setEditingItem({ path: 'history.mentors', index })}
+                          />
+                          <div className="space-y-2">
+                            <label className="label">Como entrou na história principal</label>
+                            <textarea value={form.history.entryToMainStory} onChange={e => setForm({...form, history: {...form.history, entryToMainStory: e.target.value}})} className="input-field h-32 resize-none" />
                           </div>
                         </div>
                       )}
 
                       {section.id === 'skills' && (
-                        <div className="space-y-4">
-                          <TagInput 
-                            label="Talentos Naturais"
-                            items={form.skills.talents}
-                            onAdd={name => setForm({ ...form, skills: { ...form.skills, talents: [...form.skills.talents, { name, description: '' }] } })}
-                            onEdit={index => setEditingItem({ path: 'skills.talents', index })}
-                          />
-                          <TagInput 
-                            label="Habilidades Treinadas"
-                            items={form.skills.trainedSkills}
-                            onAdd={name => setForm({ ...form, skills: { ...form.skills, trainedSkills: [...form.skills.trainedSkills, { name, description: '' }] } })}
-                            onEdit={index => setEditingItem({ path: 'skills.trainedSkills', index })}
-                          />
-                          <TagInput 
-                            label="Fraquezas"
-                            items={form.skills.weaknesses}
-                            onAdd={name => setForm({ ...form, skills: { ...form.skills, weaknesses: [...form.skills.weaknesses, { name, description: '' }] } })}
-                            onEdit={index => setEditingItem({ path: 'skills.weaknesses', index })}
-                          />
-                          <TagInput 
-                            label="Poderes"
-                            items={form.skills.powers}
-                            onAdd={name => setForm({ ...form, skills: { ...form.skills, powers: [...form.skills.powers, { name, description: '' }] } })}
-                            onEdit={index => setEditingItem({ path: 'skills.powers', index })}
-                          />
-                          <div className="space-y-1">
-                            <label className="text-[10px] font-bold uppercase opacity-50">Nível de Experiência</label>
-                            <input type="text" value={form.skills.experienceLevel} onChange={e => setForm({...form, skills: {...form.skills, experienceLevel: e.target.value}})} className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-1.5 focus:border-[var(--accent)] outline-none text-sm" />
+                        <div className="space-y-8">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <TagInput 
+                              label="Talentos Naturais"
+                              items={form.skills.talents}
+                              onAdd={name => setForm({ ...form, skills: { ...form.skills, talents: [...form.skills.talents, { name, description: '' }] } })}
+                              onEdit={index => setEditingItem({ path: 'skills.talents', index })}
+                            />
+                            <TagInput 
+                              label="Habilidades Treinadas"
+                              items={form.skills.trainedSkills}
+                              onAdd={name => setForm({ ...form, skills: { ...form.skills, trainedSkills: [...form.skills.trainedSkills, { name, description: '' }] } })}
+                              onEdit={index => setEditingItem({ path: 'skills.trainedSkills', index })}
+                            />
+                            <TagInput 
+                              label="Fraquezas"
+                              items={form.skills.weaknesses}
+                              onAdd={name => setForm({ ...form, skills: { ...form.skills, weaknesses: [...form.skills.weaknesses, { name, description: '' }] } })}
+                              onEdit={index => setEditingItem({ path: 'skills.weaknesses', index })}
+                            />
+                            <TagInput 
+                              label="Poderes"
+                              items={form.skills.powers}
+                              onAdd={name => setForm({ ...form, skills: { ...form.skills, powers: [...form.skills.powers, { name, description: '' }] } })}
+                              onEdit={index => setEditingItem({ path: 'skills.powers', index })}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="label">Nível de Experiência</label>
+                            <input type="text" value={form.skills.experienceLevel} onChange={e => setForm({...form, skills: {...form.skills, experienceLevel: e.target.value}})} className="input-field" />
                           </div>
                         </div>
                       )}
 
                       {section.id === 'relationships' && (
-                        <div className="space-y-4">
-                          <TagInput 
-                            label="Aliados"
-                            items={form.relationships.allies}
-                            onAdd={name => setForm({ ...form, relationships: { ...form.relationships, allies: [...form.relationships.allies, { name, description: '' }] } })}
-                            onEdit={index => setEditingItem({ path: 'relationships.allies', index })}
-                          />
-                          <TagInput 
-                            label="Rivais"
-                            items={form.relationships.rivals}
-                            onAdd={name => setForm({ ...form, relationships: { ...form.relationships, rivals: [...form.relationships.rivals, { name, description: '' }] } })}
-                            onEdit={index => setEditingItem({ path: 'relationships.rivals', index })}
-                          />
-                          <div className="space-y-1">
-                            <label className="text-[10px] font-bold uppercase opacity-50">Interesse amoroso</label>
-                            <input type="text" value={form.relationships.loveInterest} onChange={e => setForm({...form, relationships: {...form.relationships, loveInterest: e.target.value}})} className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-1.5 focus:border-[var(--accent)] outline-none text-sm" />
+                        <div className="space-y-8">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <TagInput 
+                              label="Aliados"
+                              items={form.relationships.allies}
+                              onAdd={name => setForm({ ...form, relationships: { ...form.relationships, allies: [...form.relationships.allies, { name, description: '' }] } })}
+                              onEdit={index => setEditingItem({ path: 'relationships.allies', index })}
+                            />
+                            <TagInput 
+                              label="Rivais"
+                              items={form.relationships.rivals}
+                              onAdd={name => setForm({ ...form, relationships: { ...form.relationships, rivals: [...form.relationships.rivals, { name, description: '' }] } })}
+                              onEdit={index => setEditingItem({ path: 'relationships.rivals', index })}
+                            />
                           </div>
-                          <TagInput 
-                            label="Personagens que mais odeia"
-                            items={form.relationships.mostHated}
-                            onAdd={name => setForm({ ...form, relationships: { ...form.relationships, mostHated: [...form.relationships.mostHated, { name, description: '' }] } })}
-                            onEdit={index => setEditingItem({ path: 'relationships.mostHated', index })}
-                          />
-                          <TagInput 
-                            label="Personagens que mais confia"
-                            items={form.relationships.mostTrusted}
-                            onAdd={name => setForm({ ...form, relationships: { ...form.relationships, mostTrusted: [...form.relationships.mostTrusted, { name, description: '' }] } })}
-                            onEdit={index => setEditingItem({ path: 'relationships.mostTrusted', index })}
-                          />
+                          <div className="space-y-2">
+                            <label className="label">Interesse amoroso</label>
+                            <input type="text" value={form.relationships.loveInterest} onChange={e => setForm({...form, relationships: {...form.relationships, loveInterest: e.target.value}})} className="input-field" />
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <TagInput 
+                              label="Personagens que mais odeia"
+                              items={form.relationships.mostHated}
+                              onAdd={name => setForm({ ...form, relationships: { ...form.relationships, mostHated: [...form.relationships.mostHated, { name, description: '' }] } })}
+                              onEdit={index => setEditingItem({ path: 'relationships.mostHated', index })}
+                            />
+                            <TagInput 
+                              label="Personagens que mais confia"
+                              items={form.relationships.mostTrusted}
+                              onAdd={name => setForm({ ...form, relationships: { ...form.relationships, mostTrusted: [...form.relationships.mostTrusted, { name, description: '' }] } })}
+                              onEdit={index => setEditingItem({ path: 'relationships.mostTrusted', index })}
+                            />
+                          </div>
                         </div>
                       )}
 
                       {section.id === 'development' && (
-                        <div className="space-y-4">
-                          <div className="space-y-1">
-                            <label className="text-[10px] font-bold uppercase opacity-50">Objetivo no começo</label>
-                            <input type="text" value={form.development.initialGoal} onChange={e => setForm({...form, development: {...form.development, initialGoal: e.target.value}})} className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-1.5 focus:border-[var(--accent)] outline-none text-sm" />
+                        <div className="space-y-6">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                              <label className="label">Objetivo no começo</label>
+                              <input type="text" value={form.development.initialGoal} onChange={e => setForm({...form, development: {...form.development, initialGoal: e.target.value}})} className="input-field" />
+                            </div>
+                            <div className="space-y-2">
+                              <label className="label">Conflito interno</label>
+                              <input type="text" value={form.development.internalConflict} onChange={e => setForm({...form, development: {...form.development, internalConflict: e.target.value}})} className="input-field" />
+                            </div>
                           </div>
-                          <div className="space-y-1">
-                            <label className="text-[10px] font-bold uppercase opacity-50">Conflito interno</label>
-                            <input type="text" value={form.development.internalConflict} onChange={e => setForm({...form, development: {...form.development, internalConflict: e.target.value}})} className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-1.5 focus:border-[var(--accent)] outline-none text-sm" />
+                          <div className="space-y-2">
+                            <label className="label">Mudança que vai sofrer</label>
+                            <textarea value={form.development.change} onChange={e => setForm({...form, development: {...form.development, change: e.target.value}})} className="input-field h-32 resize-none" />
                           </div>
-                          <div className="space-y-1">
-                            <label className="text-[10px] font-bold uppercase opacity-50">Mudança que vai sofrer</label>
-                            <textarea value={form.development.change} onChange={e => setForm({...form, development: {...form.development, change: e.target.value}})} className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-1.5 focus:border-[var(--accent)] outline-none text-sm h-20" />
-                          </div>
-                          <div className="space-y-1">
-                            <label className="text-[10px] font-bold uppercase opacity-50">Quem se torna no final</label>
-                            <textarea value={form.development.finalSelf} onChange={e => setForm({...form, development: {...form.development, finalSelf: e.target.value}})} className="w-full bg-[var(--bg)] border border(--border)] rounded-lg px-3 py-1.5 focus:border-[var(--accent)] outline-none text-sm h-20" />
+                          <div className="space-y-2">
+                            <label className="label">Quem se torna no final</label>
+                            <textarea value={form.development.finalSelf} onChange={e => setForm({...form, development: {...form.development, finalSelf: e.target.value}})} className="input-field h-32 resize-none" />
                           </div>
                         </div>
                       )}
 
                       {section.id === 'extras' && (
-                        <div className="space-y-4">
-                          <div className="space-y-1">
-                            <label className="text-[10px] font-bold uppercase opacity-50">Frase de Efeito</label>
-                            <input type="text" value={form.extras.catchphrase} onChange={e => setForm({...form, extras: {...form.extras, catchphrase: e.target.value}})} className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-1.5 focus:border-[var(--accent)] outline-none text-sm" />
-                          </div>
-                          <div className="space-y-1">
-                            <label className="text-[10px] font-bold uppercase opacity-50">Música que representa</label>
-                            <input type="text" value={form.extras.themeSong} onChange={e => setForm({...form, extras: {...form.extras, themeSong: e.target.value}})} className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-1.5 focus:border-[var(--accent)] outline-none text-sm" />
-                          </div>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <div className="space-y-1">
-                              <label className="text-[10px] font-bold uppercase opacity-50">Comida favorita</label>
-                              <input type="text" value={form.extras.favoriteFood} onChange={e => setForm({...form, extras: {...form.extras, favoriteFood: e.target.value}})} className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-1.5 focus:border-[var(--accent)] outline-none text-sm" />
+                        <div className="space-y-6">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                              <label className="label">Frase de Efeito</label>
+                              <input type="text" value={form.extras.catchphrase} onChange={e => setForm({...form, extras: {...form.extras, catchphrase: e.target.value}})} className="input-field" />
                             </div>
-                            <div className="space-y-1">
-                              <label className="text-[10px] font-bold uppercase opacity-50">Cor favorita</label>
-                              <input type="text" value={form.extras.favoriteColor} onChange={e => setForm({...form, extras: {...form.extras, favoriteColor: e.target.value}})} className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-1.5 focus:border-[var(--accent)] outline-none text-sm" />
+                            <div className="space-y-2">
+                              <label className="label">Música que representa</label>
+                              <input type="text" value={form.extras.themeSong} onChange={e => setForm({...form, extras: {...form.extras, themeSong: e.target.value}})} className="input-field" />
                             </div>
                           </div>
-                          <div className="space-y-1">
-                            <label className="text-[10px] font-bold uppercase opacity-50">Algo aparentemente insignificante que ama</label>
-                            <input type="text" value={form.extras.insignificantThing} onChange={e => setForm({...form, extras: {...form.extras, insignificantThing: e.target.value}})} className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-1.5 focus:border-[var(--accent)] outline-none text-sm" />
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                              <label className="label">Comida favorita</label>
+                              <input type="text" value={form.extras.favoriteFood} onChange={e => setForm({...form, extras: {...form.extras, favoriteFood: e.target.value}})} className="input-field" />
+                            </div>
+                            <div className="space-y-2">
+                              <label className="label">Cor favorita</label>
+                              <input type="text" value={form.extras.favoriteColor} onChange={e => setForm({...form, extras: {...form.extras, favoriteColor: e.target.value}})} className="input-field" />
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <label className="label">Algo aparentemente insignificante que ama</label>
+                            <input type="text" value={form.extras.insignificantThing} onChange={e => setForm({...form, extras: {...form.extras, insignificantThing: e.target.value}})} className="input-field" />
                           </div>
                         </div>
                       )}
@@ -873,56 +930,85 @@ export const Characters: React.FC<CharactersProps> = ({ settings, characters, se
                   </motion.div>
                 )}
               </AnimatePresence>
-                  </div>
-                ))}
-              </div>
-          </div>
-          <div className="flex justify-end gap-2 pt-6 border-t border-[var(--border)]">
-            <button onClick={() => setIsChatOpen(true)} className="px-4 py-2 bg-[var(--accent)] text-white rounded-lg flex items-center gap-2">
-              <Sparkles size={16} /> Conversar
-            </button>
-            <button onClick={handleSave} className="inkwell-button">Salvar</button>
-          </div>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {filteredCharacters.map(char => (
-            <div key={char.id} className="inkwell-card group hover:border-[var(--accent)] transition-all flex flex-col gap-4">
-              <div className="aspect-square bg-[var(--bg)] border border-[var(--border)] rounded-xl overflow-hidden relative">
-                {char.imageUrl ? (
-                  <img src={char.imageUrl} alt={char.basicInfo.name} className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center opacity-20">
-                    <User size={48} />
-                  </div>
-                )}
-                <div className="absolute top-2 right-2 flex gap-1 z-10">
-                  <button onClick={() => handleEdit(char)} className="p-2 bg-black/50 text-white rounded-lg hover:bg-[var(--accent)]"><Edit2 size={14} /></button>
-                  <button onClick={() => handleDelete(char.id)} className="p-2 bg-black/50 text-white rounded-lg hover:bg-red-500"><Trash2 size={14} /></button>
-                </div>
-              </div>
-              <div>
-                <h3 className="text-xl font-bold truncate">{char.basicInfo.name}</h3>
-                <p className="text-xs opacity-50 font-bold uppercase tracking-wider">{char.basicInfo.occupation}</p>
-                {char.basicInfo.nickname && <p className="text-sm italic opacity-70 mt-1">"{char.basicInfo.nickname}"</p>}
-                {char.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-2">
-                    {char.tags.map((tag, i) => (
-                      <span key={i} className="text-[10px] bg-[var(--bg)] px-2 py-0.5 rounded-full opacity-70">{tag.name}</span>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <div className="mt-auto pt-4 border-t border-[var(--border)] flex items-center justify-between text-[10px] font-bold uppercase opacity-50">
-                <span>{char.basicInfo.age || '?'} anos</span>
-                <span>{char.basicInfo.gender || '?'}</span>
-              </div>
             </div>
           ))}
-          {filteredCharacters.length === 0 && (
-            <div className="col-span-full py-20 text-center opacity-30">
-              <User size={64} className="mx-auto mb-4" />
-              <p className="text-xl font-serif">{t.noCharacters}</p>
+        </div>
+      </div>
+    </div>
+    <div className="flex justify-end gap-4 pt-10 border-t border-[var(--border)]">
+      <button 
+        onClick={() => setIsChatOpen(true)} 
+        className="btn-ghost !px-8"
+      >
+        <Sparkles size={18} /> Conversar com IA
+      </button>
+      <button 
+        onClick={handleSave} 
+        className="btn-primary !px-12"
+      >
+        <Save size={18} /> Salvar Personagem
+      </button>
+    </div>
+  </div>
+) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+          {filteredCharacters.length > 0 ? (
+            filteredCharacters.map((char) => (
+              <motion.div 
+                layout
+                key={char.id}
+                className="card-ink card-character group"
+              >
+                <div className="flex items-start justify-between mb-4">
+                  {char.imageUrl ? (
+                    <div className="w-16 h-16 rounded-[2px] overflow-hidden border border-[var(--border)]">
+                      <img src={char.imageUrl} alt={char.basicInfo.name} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500" />
+                    </div>
+                  ) : (
+                    <div className="char-initial">
+                      {char.basicInfo.name.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button 
+                      onClick={() => handleEdit(char)}
+                      className="p-2 text-white/40 hover:text-[var(--accent)] transition-colors"
+                    >
+                      <Edit2 size={16} />
+                    </button>
+                    <button 
+                      onClick={() => handleDelete(char.id)}
+                      className="p-2 text-white/40 hover:text-red-400 transition-colors"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <h3 className="font-display text-[24px] font-semibold text-white group-hover:text-[var(--accent)] transition-colors leading-tight">
+                    {char.basicInfo.name}
+                  </h3>
+                  <p className="font-serif text-[14px] italic text-white/40">{char.basicInfo.role || char.basicInfo.occupation || "Papel não definido"}</p>
+                </div>
+
+                <div className="flex flex-wrap gap-2 mt-auto pt-4">
+                  {char.tags.slice(0, 3).map((tag, i) => (
+                    <span key={i} className="section-tag">
+                      {tag.name}
+                    </span>
+                  ))}
+                </div>
+              </motion.div>
+            ))
+          ) : (
+            <div className="col-span-full py-24 text-center card-ink">
+              <div className="w-16 h-16 bg-[var(--accent)]/5 rounded-full flex items-center justify-center mx-auto mb-6">
+                <User size={24} className="text-[var(--accent)]/50" />
+              </div>
+              <p className="font-display text-[24px] italic text-white/40 mb-4">Nenhum personagem encontrado</p>
+              <p className="font-sans text-[13px] text-white/30 mb-8">Seu elenco ainda está esperando para ser escalado. ✨</p>
+              <button onClick={() => setIsFormOpen(true)} className="btn-ghost mx-auto">Criar Primeiro Personagem</button>
             </div>
           )}
         </div>

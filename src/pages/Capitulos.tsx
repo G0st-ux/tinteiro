@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../services/supabase';
+import { db, UserProfile } from '../firebase';
+import { 
+  doc, getDoc, updateDoc, collection, query, where, 
+  orderBy, getDocs, addDoc, deleteDoc, setDoc 
+} from 'firebase/firestore';
 import { 
   ArrowLeft, Plus, Edit3, Trash2, Eye, EyeOff, 
   GripVertical, Loader2, Save, X, BookOpen, Clock
@@ -9,7 +13,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Markdown from 'react-markdown';
 
 interface CapitulosProps {
-  usuario: { id: string; nome: string; };
+  usuario: UserProfile;
   historia?: { id: string; titulo: string; capa?: string; status: string; };
   onVoltar?: () => void;
   t: any;
@@ -31,16 +35,16 @@ export const Capitulos: React.FC<CapitulosProps> = ({ usuario, historia: histori
   const [statusCapitulo, setStatusCapitulo] = useState<'rascunho' | 'publicado'>('rascunho');
 
   const carregarCapitulos = async () => {
+    if (!historia?.id) return;
     setCarregando(true);
     try {
-      const { data, error } = await supabase
-        .from('capitulos')
-        .select('*')
-        .eq('historia_id', historia.id)
-        .order('ordem', { ascending: true });
-
-      if (error) throw error;
-      setCapitulos(data || []);
+      const q = query(
+        collection(db, 'chapters'),
+        where('storyId', '==', historia.id),
+        orderBy('order', 'asc')
+      );
+      const snap = await getDocs(q);
+      setCapitulos(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     } catch (error) {
       console.error('Erro ao carregar capítulos:', error);
     } finally {
@@ -51,18 +55,15 @@ export const Capitulos: React.FC<CapitulosProps> = ({ usuario, historia: histori
   useEffect(() => {
     const carregarHistoria = async () => {
       if (!historia && id) {
-        const { data, error } = await supabase
-          .from('historias')
-          .select('*')
-          .eq('id', id)
-          .single();
+        const storyRef = doc(db, 'stories', id);
+        const storySnap = await getDoc(storyRef);
         
-        if (error) {
-          console.error('Erro ao carregar história:', error);
+        if (!storySnap.exists()) {
+          console.error('Erro ao carregar história');
           navigate('/minhas-historias');
           return;
         }
-        setHistoria(data);
+        setHistoria({ id: storySnap.id, ...storySnap.data() });
       }
     };
     carregarHistoria();
@@ -96,28 +97,22 @@ export const Capitulos: React.FC<CapitulosProps> = ({ usuario, historia: histori
 
     try {
       if (capituloEditando) {
-        const { error } = await supabase
-          .from('capitulos')
-          .update({
-            titulo: tituloCapitulo,
-            conteudo: conteudoEditor,
-            status: statusCapitulo
-          })
-          .eq('id', capituloEditando.id);
-        if (error) throw error;
+        const capRef = doc(db, 'chapters', capituloEditando.id);
+        await updateDoc(capRef, {
+          titulo: tituloCapitulo,
+          conteudo: conteudoEditor,
+          status: statusCapitulo
+        });
       } else {
         const proximaOrdem = capitulos.length + 1;
-        const { error } = await supabase
-          .from('capitulos')
-          .insert([{
-            historia_id: historia.id,
-            titulo: tituloCapitulo,
-            conteudo: conteudoEditor,
-            ordem: proximaOrdem,
-            status: statusCapitulo,
-            criado_em: new Date().toISOString()
-          }]);
-        if (error) throw error;
+        await addDoc(collection(db, 'chapters'), {
+          storyId: historia.id,
+          titulo: tituloCapitulo,
+          conteudo: conteudoEditor,
+          order: proximaOrdem,
+          status: statusCapitulo,
+          createdAt: new Date().toISOString()
+        });
       }
 
       setEditorAberto(false);
@@ -132,8 +127,7 @@ export const Capitulos: React.FC<CapitulosProps> = ({ usuario, historia: histori
   const handleExcluirCapitulo = async (id: string) => {
     if (!confirm('Tem certeza que deseja excluir este capítulo?')) return;
     try {
-      const { error } = await supabase.from('capitulos').delete().eq('id', id);
-      if (error) throw error;
+      await deleteDoc(doc(db, 'chapters', id));
       carregarCapitulos();
     } catch (error) {
       console.error('Erro ao excluir capítulo:', error);
@@ -143,11 +137,8 @@ export const Capitulos: React.FC<CapitulosProps> = ({ usuario, historia: histori
   const handleToggleStatus = async (cap: any) => {
     const novoStatus = cap.status === 'publicado' ? 'rascunho' : 'publicado';
     try {
-      const { error } = await supabase
-        .from('capitulos')
-        .update({ status: novoStatus })
-        .eq('id', cap.id);
-      if (error) throw error;
+      const capRef = doc(db, 'chapters', cap.id);
+      await updateDoc(capRef, { status: novoStatus });
       carregarCapitulos();
     } catch (error) {
       console.error('Erro ao alterar status:', error);
@@ -171,12 +162,12 @@ export const Capitulos: React.FC<CapitulosProps> = ({ usuario, historia: histori
         <div className="flex items-center gap-6">
           <button 
             onClick={() => onVoltar ? onVoltar() : navigate('/minhas-historias')}
-            className="p-3 bg-[var(--card)] border border-[var(--border)] rounded-2xl hover:bg-[var(--bg)] transition-all"
+            className="p-3 card-ink hover:bg-[var(--bg)] transition-all"
           >
             <ArrowLeft size={24} />
           </button>
           <div className="flex items-center gap-4">
-            <div className="w-16 h-24 bg-[var(--bg)] rounded-xl overflow-hidden border border-[var(--border)] flex-shrink-0 shadow-sm">
+            <div className="w-16 h-24 bg-[var(--bg)] rounded-[2px] overflow-hidden border border-[var(--border)] flex-shrink-0 shadow-sm">
               {historia.capa ? (
                 <img src={historia.capa} alt={historia.titulo} className="w-full h-full object-cover" />
               ) : (
@@ -188,17 +179,17 @@ export const Capitulos: React.FC<CapitulosProps> = ({ usuario, historia: histori
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <h1 className="text-2xl font-bold font-serif line-clamp-1">{historia.titulo}</h1>
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider text-white ${historia.status === 'publicada' ? 'bg-emerald-500' : 'bg-gray-500'}`}>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider text-white font-sans ${historia.status === 'publicada' ? 'bg-emerald-500' : 'bg-gray-500'}`}>
                   {historia.status === 'publicada' ? 'Publicada' : 'Rascunho'}
                 </span>
               </div>
-              <p className="opacity-60 text-sm">Gerencie os capítulos da sua história</p>
+              <p className="opacity-60 text-sm font-sans">Gerencie os capítulos da sua história</p>
             </div>
           </div>
         </div>
         <button 
           onClick={handleNovoCapitulo}
-          className="flex items-center justify-center gap-2 px-6 py-3 bg-[var(--accent)] text-white rounded-xl font-bold hover:opacity-90 transition-all shadow-lg"
+          className="btn-primary flex items-center justify-center gap-2 px-6 py-3"
         >
           <Plus size={20} />
           Novo Capítulo
@@ -218,21 +209,21 @@ export const Capitulos: React.FC<CapitulosProps> = ({ usuario, historia: histori
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
-              className="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-4 flex items-center gap-4 group hover:border-[var(--accent)]/30 transition-all"
+              className="card-ink p-4 flex items-center gap-4 group hover:border-[var(--accent)]/30 transition-all"
             >
               <div className="p-2 opacity-20 cursor-grab active:cursor-grabbing">
                 <GripVertical size={20} />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-3 mb-1">
-                  <span className="text-xs font-bold text-[var(--accent)] uppercase tracking-widest">Capítulo {cap.ordem}</span>
-                  <span className={`px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wider text-white ${cap.status === 'publicado' ? 'bg-emerald-500' : 'bg-gray-500'}`}>
+                  <span className="text-xs font-bold text-[var(--accent)] uppercase tracking-widest font-sans">Capítulo {cap.order}</span>
+                  <span className={`px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wider text-white font-sans ${cap.status === 'publicado' ? 'bg-emerald-500' : 'bg-gray-500'}`}>
                     {cap.status === 'publicado' ? 'Publicado' : 'Rascunho'}
                   </span>
                 </div>
-                <h3 className="font-bold text-lg line-clamp-1">{cap.titulo}</h3>
-                <div className="flex items-center gap-3 text-xs opacity-40 mt-1">
-                  <span className="flex items-center gap-1"><Clock size={12} /> {new Date(cap.criado_em).toLocaleDateString()}</span>
+                <h3 className="font-bold font-serif text-lg line-clamp-1">{cap.titulo}</h3>
+                <div className="flex items-center gap-3 text-xs opacity-40 mt-1 font-sans">
+                  <span className="flex items-center gap-1"><Clock size={12} /> {new Date(cap.createdAt).toLocaleDateString()}</span>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -266,7 +257,7 @@ export const Capitulos: React.FC<CapitulosProps> = ({ usuario, historia: histori
           </div>
           <div className="space-y-2">
             <h3 className="text-2xl font-bold font-serif">Nenhum capítulo ainda</h3>
-            <p className="max-w-xs mx-auto">Comece escrevendo o primeiro capítulo da sua obra prima.</p>
+            <p className="max-w-xs mx-auto font-sans">Comece escrevendo o primeiro capítulo da sua obra prima.</p>
           </div>
         </div>
       )}
@@ -297,7 +288,7 @@ export const Capitulos: React.FC<CapitulosProps> = ({ usuario, historia: histori
                 <select 
                   value={statusCapitulo}
                   onChange={e => setStatusCapitulo(e.target.value as any)}
-                  className="bg-[var(--bg)] border border-[var(--border)] rounded-xl px-4 py-2 text-sm font-bold outline-none"
+                  className="input-field px-4 py-2 text-sm font-bold"
                 >
                   <option value="rascunho">Rascunho</option>
                   <option value="publicado">Publicado</option>
@@ -305,7 +296,7 @@ export const Capitulos: React.FC<CapitulosProps> = ({ usuario, historia: histori
                 <button 
                   onClick={handleSalvarCapitulo}
                   disabled={salvando}
-                  className="flex items-center gap-2 px-6 py-2 bg-[var(--accent)] text-white rounded-xl font-bold hover:opacity-90 transition-all shadow-lg disabled:opacity-50"
+                  className="btn-primary flex items-center gap-2 px-6 py-2"
                 >
                   {salvando ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />}
                   Salvar
@@ -315,7 +306,7 @@ export const Capitulos: React.FC<CapitulosProps> = ({ usuario, historia: histori
             <div className="flex-1 overflow-y-auto p-8">
               <div className="max-w-4xl mx-auto space-y-8">
                 <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-widest opacity-40">Título do Capítulo</label>
+                  <label className="label">Título do Capítulo</label>
                   <input 
                     type="text"
                     value={tituloCapitulo}
@@ -327,18 +318,18 @@ export const Capitulos: React.FC<CapitulosProps> = ({ usuario, historia: histori
                 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 min-h-[500px]">
                   <div className="space-y-2 flex flex-col">
-                    <label className="text-xs font-bold uppercase tracking-widest opacity-40">Conteúdo (Markdown)</label>
+                    <label className="label">Conteúdo (Markdown)</label>
                     <textarea 
                       value={conteudoEditor}
                       onChange={e => setConteudoEditor(e.target.value)}
                       placeholder="Comece a escrever sua história..."
-                      className="flex-1 w-full bg-[var(--bg)] border border-[var(--border)] rounded-2xl p-6 outline-none focus:border-[var(--accent)] transition-all resize-none font-mono text-sm leading-relaxed"
+                      className="input-field flex-1 w-full p-6 resize-none font-mono text-sm leading-relaxed"
                     />
                   </div>
                   
                   <div className="space-y-2 flex flex-col">
-                    <label className="text-xs font-bold uppercase tracking-widest opacity-40">Visualização</label>
-                    <div className="flex-1 w-full bg-[var(--card)] border border-[var(--border)] rounded-2xl p-6 overflow-y-auto prose prose-invert max-w-none">
+                    <label className="label">Visualização</label>
+                    <div className="flex-1 w-full card-ink p-6 overflow-y-auto prose prose-invert max-w-none">
                       <Markdown>{conteudoEditor || '*Nenhum conteúdo para visualizar*'}</Markdown>
                     </div>
                   </div>

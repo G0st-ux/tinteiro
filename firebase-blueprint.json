@@ -1,0 +1,249 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Perfil do usuário no Inkwell",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "ID único do Firebase Auth" },
+        "nome": { "type": "string", "description": "Nome de exibição" },
+        "email": { "type": "string", "format": "email" },
+        "foto": { "type": "string", "description": "URL da foto de perfil" },
+        "bio": { "type": "string", "description": "Biografia do autor" },
+        "idioma": { "type": "string", "enum": ["pt", "en", "es"] },
+        "banido": { "type": "boolean" },
+        "criado_em": { "type": "string", "format": "date-time" },
+        "role": { "type": "string", "enum": ["user", "admin"] }
+      },
+      "required": ["uid", "nome", "email", "role"]
+    },
+    "Story": {
+      "title": "Story",
+      "description": "Uma história ou manuscrito",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "authorId": { "type": "string" },
+        "category": { "type": "string" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "isPublic": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "title", "authorId"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "Notificação para o usuário",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "usuario_id": { "type": "string" },
+        "titulo": { "type": "string" },
+        "mensagem": { "type": "string" },
+        "lida": { "type": "boolean" },
+        "criado_em": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "usuario_id", "titulo", "mensagem", "lida"]
+    },
+    "Chapter": {
+      "title": "Chapter",
+      "description": "Capítulo de uma história ou sala",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "storyId": { "type": "string" },
+        "roomId": { "type": "string" },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "order": { "type": "integer" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "createdAt"]
+    },
+    "Like": {
+      "title": "Like",
+      "description": "Curtida em uma história",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "storyId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "storyId"]
+    },
+    "Favorite": {
+      "title": "Favorite",
+      "description": "Favorito em uma história",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "storyId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "storyId"]
+    },
+    "Follower": {
+      "title": "Follower",
+      "description": "Relação de seguidores",
+      "type": "object",
+      "properties": {
+        "seguidor_id": { "type": "string" },
+        "seguido_id": { "type": "string" },
+        "criado_em": { "type": "string", "format": "date-time" }
+      },
+      "required": ["seguidor_id", "seguido_id"]
+    },
+    "Comment": {
+      "title": "Comment",
+      "description": "Comentário em uma história",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "storyId": { "type": "string" },
+        "text": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "storyId", "text"]
+    },
+    "Room": {
+      "title": "Room",
+      "description": "Sala colaborativa",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "isPublic": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "ownerId"]
+    },
+    "RoomMember": {
+      "title": "RoomMember",
+      "description": "Membro de uma sala colaborativa",
+      "type": "object",
+      "properties": {
+        "roomId": { "type": "string" },
+        "userId": { "type": "string" },
+        "role": { "type": "string" },
+        "joinedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["roomId", "userId", "role"]
+    },
+    "RoomMessage": {
+      "title": "RoomMessage",
+      "description": "Mensagem no chat de uma sala",
+      "type": "object",
+      "properties": {
+        "roomId": { "type": "string" },
+        "userId": { "type": "string" },
+        "text": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["roomId", "userId", "text", "createdAt"]
+    },
+    "Character": {
+      "title": "Character",
+      "description": "Personagem de uma sala",
+      "type": "object",
+      "properties": {
+        "roomId": { "type": "string" },
+        "basicInfo": { "type": "object" },
+        "description": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["roomId", "basicInfo"]
+    },
+    "Location": {
+      "title": "Location",
+      "description": "Local/Mundo de uma sala",
+      "type": "object",
+      "properties": {
+        "roomId": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "type": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["roomId", "name"]
+    },
+    "UserPublicProfile": {
+      "title": "UserPublicProfile",
+      "description": "Perfil público do usuário (sem PII)",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "nome": { "type": "string" },
+        "foto": { "type": "string" },
+        "bio": { "type": "string" },
+        "role": { "type": "string" },
+        "banido": { "type": "boolean" },
+        "criado_em": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "nome"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": {
+      "schema": "UserProfile",
+      "description": "Coleção de perfis de usuários (privado)"
+    },
+    "/users_public/{uid}": {
+      "schema": "UserPublicProfile",
+      "description": "Coleção de perfis públicos de usuários"
+    },
+    "/stories/{storyId}": {
+      "schema": "Story",
+      "description": "Coleção de histórias"
+    },
+    "/notificacoes/{notifId}": {
+      "schema": "Notification",
+      "description": "Coleção de notificações"
+    },
+    "/chapters/{chapterId}": {
+      "schema": "Chapter",
+      "description": "Coleção de capítulos"
+    },
+    "/likes/{likeId}": {
+      "schema": "Like",
+      "description": "Coleção de curtidas"
+    },
+    "/favoritos/{favId}": {
+      "schema": "Favorite",
+      "description": "Coleção de favoritos"
+    },
+    "/seguidores/{segId}": {
+      "schema": "Follower",
+      "description": "Coleção de seguidores"
+    },
+    "/comments/{commentId}": {
+      "schema": "Comment",
+      "description": "Coleção de comentários"
+    },
+    "/rooms/{roomId}": {
+      "schema": "Room",
+      "description": "Coleção de salas colaborativas"
+    },
+    "/room_members/{memberId}": {
+      "schema": "RoomMember",
+      "description": "Coleção de membros de salas"
+    },
+    "/room_messages/{messageId}": {
+      "schema": "RoomMessage",
+      "description": "Coleção de mensagens de salas"
+    },
+    "/characters/{charId}": {
+      "schema": "Character",
+      "description": "Coleção de personagens de salas"
+    },
+    "/locations/{locId}": {
+      "schema": "Location",
+      "description": "Coleção de locais de salas"
+    }
+  }
+}

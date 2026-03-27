@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../services/supabase';
+import { db, UserProfile } from '../firebase';
+import { collection, query, where, orderBy, limit, getDocs, updateDoc, doc, writeBatch } from 'firebase/firestore';
 import { 
   Bell, UserPlus, Heart, MessageCircle, Users, 
   CheckCheck, Loader2, ChevronRight 
@@ -17,7 +18,7 @@ interface Notificacao {
 }
 
 interface NotificacoesProps {
-  usuario: { id: string; nome: string; foto?: string; };
+  usuario: UserProfile;
   t: any;
 }
 
@@ -27,16 +28,22 @@ export const Notificacoes: React.FC<NotificacoesProps> = ({ usuario, t }) => {
   const navigate = useNavigate();
 
   const buscarNotificacoes = async () => {
+    if (!usuario?.uid) return;
     try {
-      const { data, error } = await supabase
-        .from('notificacoes')
-        .select('*')
-        .eq('usuario_id', usuario.id)
-        .order('criado_em', { ascending: false })
-        .limit(50);
-
-      if (error) throw error;
-      setNotificacoes(data || []);
+      const q = query(
+        collection(db, 'notificacoes'),
+        where('usuario_id', '==', usuario.uid),
+        orderBy('criado_em', 'desc'),
+        limit(50)
+      );
+      
+      const querySnapshot = await getDocs(q);
+      const docs = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Notificacao[];
+      
+      setNotificacoes(docs);
     } catch (err) {
       console.error('Erro ao buscar notificações:', err);
     } finally {
@@ -46,19 +53,15 @@ export const Notificacoes: React.FC<NotificacoesProps> = ({ usuario, t }) => {
 
   useEffect(() => {
     buscarNotificacoes();
-  }, [usuario.id]);
+  }, [usuario.uid]);
 
   const marcarComoLida = async (notificacao: Notificacao) => {
     if (notificacao.lida) return;
     
     try {
-      const { error } = await supabase
-        .from('notificacoes')
-        .update({ lida: true })
-        .eq('id', notificacao.id);
+      const notifRef = doc(db, 'notificacoes', notificacao.id);
+      await updateDoc(notifRef, { lida: true });
 
-      if (error) throw error;
-      
       setNotificacoes(prev => 
         prev.map(n => n.id === notificacao.id ? { ...n, lida: true } : n)
       );
@@ -69,14 +72,15 @@ export const Notificacoes: React.FC<NotificacoesProps> = ({ usuario, t }) => {
 
   const marcarTodasComoLidas = async () => {
     try {
-      const { error } = await supabase
-        .from('notificacoes')
-        .update({ lida: true })
-        .eq('usuario_id', usuario.id)
-        .eq('lida', false);
+      const batch = writeBatch(db);
+      const naoLidas = notificacoes.filter(n => !n.lida);
+      
+      naoLidas.forEach(n => {
+        const notifRef = doc(db, 'notificacoes', n.id);
+        batch.update(notifRef, { lida: true });
+      });
 
-      if (error) throw error;
-
+      await batch.commit();
       setNotificacoes(prev => prev.map(n => ({ ...n, lida: true })));
     } catch (err) {
       console.error('Erro ao marcar todas como lidas:', err);

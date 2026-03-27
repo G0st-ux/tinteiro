@@ -22,9 +22,12 @@ import { SalasColaborativas } from './pages/SalasColaborativas';
 import { SalaColaborativa } from './pages/SalaColaborativa';
 import { AuthPage } from './pages/AuthPage';
 import { useLocalStorage, AppSettings, defaultSettings, Story, Character, Location } from './types';
-import { Usuario } from './services/supabase';
+import { UserProfile, auth, db, logout, syncUserProfile, handleFirestoreError, OperationType } from './firebase';
+import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
+import { collection, query, where, onSnapshot, getCountFromServer } from 'firebase/firestore';
 import { THEMES, TRANSLATIONS } from './constants';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'motion/react';
 
 // Placeholder components for other pages
 const Placeholder = ({ title }: { title: string }) => (
@@ -35,26 +38,43 @@ const Placeholder = ({ title }: { title: string }) => (
 );
 
 function AppContent({ 
-  settings, setSettings, usuario, setUsuario, stories, setStories, characters, setCharacters, locations, setLocations, t
+  settings, setSettings, usuario, setUsuario, stories, setStories, characters, setCharacters, locations, setLocations, t, unreadCount
 }: any) {
   const navigate = useNavigate();
   const [salaAtiva, setSalaAtiva] = React.useState<any>(null);
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
 
+  const handleLogout = async () => {
+    try {
+      await logout();
+      setUsuario(null);
+    } catch (error) {
+      console.error("Erro ao sair:", error);
+    }
+  };
+
   return (
-    <div className={`min-h-screen flex ${settings.compactMode ? 'compact-mode' : ''}`}>
-      <TopBar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
+    <div className="min-h-screen flex relative overflow-x-hidden">
+      {/* Background Effects */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+        <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-accent/5 blur-[150px] rounded-full animate-pulse" style={{ animationDuration: '8s' }} />
+        <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] bg-purple-500/5 blur-[150px] rounded-full animate-pulse" style={{ animationDuration: '12s' }} />
+        <div className="absolute top-[30%] left-[40%] w-[30%] h-[30%] bg-blue-500/5 blur-[120px] rounded-full animate-pulse" style={{ animationDuration: '10s' }} />
+      </div>
+
+      <TopBar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} usuario={usuario} unreadCount={unreadCount} />
       <Sidebar 
         usuario={usuario} 
         settings={settings} 
         setSettings={setSettings} 
         t={t} 
-        onLogout={() => setUsuario(null)} 
+        onLogout={handleLogout} 
         isOpen={isSidebarOpen}
         setIsOpen={setIsSidebarOpen}
+        unreadCount={unreadCount}
       />
       
-      <main className="flex-1 lg:ml-64 p-6 lg:p-12 max-w-7xl mx-auto w-full transition-all pt-20 lg:pt-12">
+      <main className="flex-1 lg:ml-24 p-6 lg:p-8 max-w-7xl mx-auto w-full transition-all pt-24 lg:pt-28 relative z-10">
         <Routes>
           <Route path="/" element={<Dashboard t={t} stories={stories} characters={characters} usuario={usuario} />} />
           <Route path="/settings" element={
@@ -70,7 +90,7 @@ function AppContent({
           <Route path="/characters" element={<Characters settings={settings} characters={characters} setCharacters={setCharacters} t={t} />} />
           <Route path="/ai-chat" element={<AIChat settings={settings} t={t} characters={characters} stories={stories} />} />
           <Route path="/world" element={<World settings={settings} locations={locations} setLocations={setLocations} t={t} />} />
-          <Route path="/generator" element={<StoryGenerator settings={settings} stories={stories} setStories={setStories} t={t} />} />
+          <Route path="/generator" element={<StoryGenerator settings={settings} stories={stories} setStories={setStories} characters={characters} t={t} />} />
           <Route path="/image-gen" element={<ImageGenerator settings={settings} characters={characters} setCharacters={setCharacters} t={t} />} />
           <Route path="/perfil" element={<ProfilePage usuario={usuario} setUsuario={setUsuario} t={t} />} />
           <Route path="/notificacoes" element={<Notificacoes usuario={usuario} t={t} />} />
@@ -108,10 +128,47 @@ function AppContent({
 
 export default function App() {
   const [settings, setSettings] = useLocalStorage<AppSettings>('inkwell-settings', defaultSettings);
-  const [usuario, setUsuario] = useLocalStorage<Usuario | null>('inkwell-user', null);
+  const [usuario, setUsuario] = useLocalStorage<UserProfile | null>('inkwell-user', null);
   const [stories, setStories] = useLocalStorage<Story[]>('inkwell-stories', []);
   const [characters, setCharacters] = useLocalStorage<Character[]>('inkwell-characters', []);
   const [locations, setLocations] = useLocalStorage<Location[]>('inkwell-locations', []);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        const profile = await syncUserProfile(firebaseUser);
+        setUsuario(profile);
+      } else {
+        setUsuario(null);
+      }
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!usuario?.uid) {
+      setUnreadCount(0);
+      return;
+    }
+
+    const q = query(
+      collection(db, 'notificacoes'),
+      where('usuario_id', '==', usuario.uid),
+      where('lida', '==', false)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setUnreadCount(snapshot.size);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'notificacoes');
+    });
+
+    return () => unsubscribe();
+  }, [usuario?.uid]);
 
   useEffect(() => {
     // Initialize with Borrão if empty
@@ -253,10 +310,38 @@ export default function App() {
 
   useEffect(() => {
     const root = document.documentElement;
+    
+    // Dynamic Color Generation
+    const hexToRgb = (hex: string) => {
+      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+      return result ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16)
+      } : { r: 226, g: 184, b: 80 };
+    };
+
+    const rgb = hexToRgb(settings.accentColor);
+    
+    // Helper to adjust brightness
+    const adjustBrightness = (hex: string, percent: number) => {
+      const { r, g, b } = hexToRgb(hex);
+      const adjust = (val: number) => Math.round(Math.min(255, Math.max(0, val + (val * percent))));
+      const toHex = (val: number) => val.toString(16).padStart(2, '0');
+      return `#${toHex(adjust(r))}${toHex(adjust(g))}${toHex(adjust(b))}`;
+    };
+
+    const accentLight = adjustBrightness(settings.accentColor, 0.2);
+    const accentDark = adjustBrightness(settings.accentColor, -0.3);
+    const accentGlow = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.15)`;
+
     root.style.setProperty('--bg', activeTheme.bg);
     root.style.setProperty('--card', activeTheme.card);
     root.style.setProperty('--text', activeTheme.text);
-    root.style.setProperty('--accent', activeTheme.accent);
+    root.style.setProperty('--accent', settings.accentColor);
+    root.style.setProperty('--accent-light', accentLight);
+    root.style.setProperty('--accent-dark', accentDark);
+    root.style.setProperty('--accent-glow', accentGlow);
     root.style.setProperty('--border', activeTheme.border);
     
     if (activeTheme.isDark) {
@@ -264,7 +349,19 @@ export default function App() {
     } else {
       root.classList.remove('dark');
     }
-  }, [settings.theme, activeTheme]);
+  }, [settings.theme, settings.accentColor, activeTheme]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[var(--bg)] flex items-center justify-center">
+        <motion.div 
+          animate={{ rotate: 360 }}
+          transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+          className="w-12 h-12 border-4 border-accent border-t-transparent rounded-full"
+        />
+      </div>
+    );
+  }
 
   if (!usuario) {
     return <AuthPage onLogin={setUsuario} />;
@@ -284,6 +381,7 @@ export default function App() {
         locations={locations} 
         setLocations={setLocations} 
         t={t} 
+        unreadCount={unreadCount}
       />
     </Router>
   );

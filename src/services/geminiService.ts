@@ -22,7 +22,7 @@ export const generateStoryChapter = async (
     Cenário: ${config.setting}
     
     Personagens:
-    ${config.characters.map((c: any) => `- ${c.name} (${c.role})`).join('\n')}
+    ${config.characters.map((c: any) => `- ${c.basicInfo.name} (${c.basicInfo.role})`).join('\n')}
     
     Enredo/Prévia:
     ${config.plot}
@@ -31,12 +31,13 @@ export const generateStoryChapter = async (
     ${previousChapters.map((c, i) => `Capítulo ${i + 1}: ${c.slice(0, 300)}...`).join('\n')}
     
     Instruções específicas:
-    - Escreva aproximadamente ${config.pagesPerChapter} páginas, com foco em ${config.linesPerPage} linhas por página.
+    - Escreva exatamente ${config.pagesPerChapter} páginas, com foco em ${config.linesPerPage} linhas por página.
+    - Separe cada página com o delimitador "---PAGINA---".
     - Mantenha a consistência com os capítulos anteriores.
     - O capítulo deve ter um título próprio.
     - Retorne no formato:
     TITULO: [Título do Capítulo]
-    CONTEUDO: [Texto do Capítulo]
+    CONTEUDO: [Conteúdo da página 1] ---PAGINA--- [Conteúdo da página 2] ...
   `;
 
   const response = await ai.models.generateContent({
@@ -49,9 +50,12 @@ export const generateStoryChapter = async (
   const titleMatch = text.match(/TITULO:\s*(.*)/i);
   const contentMatch = text.match(/CONTEUDO:\s*([\s\S]*)/i);
   
+  const content = contentMatch ? contentMatch[1].trim() : text;
+  const pages = content.split('---PAGINA---').map(p => p.trim());
+  
   return {
     title: titleMatch ? titleMatch[1].trim() : `Capítulo ${chapterIndex + 1}`,
-    content: contentMatch ? contentMatch[1].trim() : text
+    pages: pages
   };
 };
 

@@ -3,182 +3,74 @@ import { GoogleGenAI } from "@google/genai";
 export const THEMES = {
   midnight: {
     name: "Midnight",
-    bg: "#0f0f1a",
-    card: "#1a1a2e",
+    bg: "#030303",
+    card: "rgba(15, 15, 15, 0.7)",
+    text: "#ffffff",
+    accent: "#e2b850",
+    border: "rgba(255, 255, 255, 0.08)",
+    isDark: true
+  },
+  nocturne: {
+    name: "Nocturne",
+    bg: "#050505",
+    card: "rgba(10, 10, 10, 0.8)",
     text: "#e0e0e0",
     accent: "#7c6af7",
-    border: "#2a2a4a",
+    border: "rgba(124, 106, 247, 0.1)",
     isDark: true
+  },
+  ivory: {
+    name: "Ivory",
+    bg: "#fdfcf8",
+    card: "rgba(255, 255, 255, 0.9)",
+    text: "#1a1a1a",
+    accent: "#8b6914",
+    border: "rgba(139, 105, 20, 0.1)",
+    isDark: false
   },
   forest: {
     name: "Forest",
-    bg: "#0d1f0d",
-    card: "#162e16",
+    bg: "#080a08",
+    card: "rgba(12, 15, 12, 0.7)",
     text: "#e0e8e0",
     accent: "#4caf50",
-    border: "#1e3d1e",
+    border: "rgba(76, 175, 80, 0.1)",
     isDark: true
   },
   ocean: {
     name: "Ocean",
-    bg: "#0a1628",
-    card: "#112240",
+    bg: "#05080a",
+    card: "rgba(8, 12, 15, 0.7)",
     text: "#e6f1ff",
     accent: "#2196f3",
-    border: "#1d3557",
+    border: "rgba(33, 150, 243, 0.1)",
     isDark: true
   },
   crimson: {
     name: "Crimson",
-    bg: "#1a0a0a",
-    card: "#2d1212",
+    bg: "#0a0505",
+    card: "rgba(15, 8, 8, 0.7)",
     text: "#f5e6e6",
     accent: "#e53935",
-    border: "#3d1a1a",
+    border: "rgba(229, 57, 53, 0.1)",
     isDark: true
-  },
-  amber: {
-    name: "Amber",
-    bg: "#1a1200",
-    card: "#2d1f00",
-    text: "#fff4e0",
-    accent: "#ffa000",
-    border: "#3d2b00",
-    isDark: true
-  },
-  rose: {
-    name: "Rose",
-    bg: "#1a0a12",
-    card: "#2d121f",
-    text: "#fce4ec",
-    accent: "#e91e8c",
-    border: "#3d1a2b",
-    isDark: true
-  },
-  arctic: {
-    name: "Arctic",
-    bg: "#f0f4f8",
-    card: "#ffffff",
-    text: "#1a2b3c",
-    accent: "#1565c0",
-    border: "#d1d9e6",
-    isDark: false
   },
   parchment: {
     name: "Parchment",
     bg: "#fdf6e3",
-    card: "#f5ecd5",
+    card: "rgba(245, 236, 213, 0.8)",
     text: "#5c4b37",
     accent: "#8b6914",
-    border: "#e6dcc3",
-    isDark: false
-  },
-  mint: {
-    name: "Mint",
-    bg: "#f0faf4",
-    card: "#ffffff",
-    text: "#1e3a2b",
-    accent: "#2e7d52",
-    border: "#d1e9db",
-    isDark: false
-  },
-  lavender: {
-    name: "Lavender",
-    bg: "#f5f0ff",
-    card: "#ffffff",
-    text: "#2d1a4d",
-    accent: "#6a1b9a",
-    border: "#e1d5f5",
+    border: "rgba(139, 105, 20, 0.15)",
     isDark: false
   },
   slate: {
     name: "Slate",
-    bg: "#1e2433",
-    card: "#2a3142",
+    bg: "#0f1115",
+    card: "rgba(20, 22, 27, 0.7)",
     text: "#e1e4e8",
     accent: "#90caf9",
-    border: "#374151",
-    isDark: true
-  },
-  ember: {
-    name: "Ember",
-    bg: "#1c1008",
-    card: "#2d1a0d",
-    text: "#fbe9e7",
-    accent: "#ff7043",
-    border: "#3e2723",
-    isDark: true
-  },
-  sakura: {
-    name: "Sakura",
-    bg: "#fff0f3",
-    card: "#ffffff",
-    text: "#4a148c",
-    accent: "#c2185b",
-    border: "#f8bbd0",
-    isDark: false
-  },
-  dusk: {
-    name: "Dusk",
-    bg: "#1a1525",
-    card: "#251e35",
-    text: "#e1bee7",
-    accent: "#ce93d8",
-    border: "#312a40",
-    isDark: true
-  },
-  sepia: {
-    name: "Sepia",
-    bg: "#2c1810",
-    card: "#3d2318",
-    text: "#d4a76a",
-    accent: "#d4a76a",
-    border: "#4e2e21",
-    isDark: true
-  },
-  nord: {
-    name: "Nord",
-    bg: "#2e3440",
-    card: "#3b4252",
-    text: "#eceff4",
-    accent: "#88c0d0",
-    border: "#434c5e",
-    isDark: true
-  },
-  sage: {
-    name: "Sage",
-    bg: "#f4f7f2",
-    card: "#ffffff",
-    text: "#2e3b23",
-    accent: "#558b2f",
-    border: "#dcedc8",
-    isDark: false
-  },
-  volcanic: {
-    name: "Volcanic",
-    bg: "#120a08",
-    card: "#1e110d",
-    text: "#fbe9e7",
-    accent: "#ff5722",
-    border: "#2d1a15",
-    isDark: true
-  },
-  pearl: {
-    name: "Pearl",
-    bg: "#fafafa",
-    card: "#ffffff",
-    text: "#263238",
-    accent: "#546e7a",
-    border: "#eceff1",
-    isDark: false
-  },
-  aurora: {
-    name: "Aurora",
-    bg: "#0a1a1a",
-    card: "#112a2a",
-    text: "#e0f2f1",
-    accent: "#00bcd4",
-    border: "#1a3a3a",
+    border: "rgba(144, 202, 249, 0.1)",
     isDark: true
   }
 };

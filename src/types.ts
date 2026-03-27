@@ -142,6 +142,7 @@ export interface GeneratedImage {
 
 export interface AppSettings {
   theme: string;
+  accentColor: string;
   language: 'pt' | 'en' | 'es';
   compactMode: boolean;
   geminiKey: string;
@@ -150,6 +151,7 @@ export interface AppSettings {
 
 export const defaultSettings: AppSettings = {
   theme: 'midnight',
+  accentColor: '#e2b850',
   language: 'pt',
   compactMode: false,
   geminiKey: '',

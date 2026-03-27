@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Story } from '../types';
 import { 
   Book, Plus, Search, Clock, FileText, Trash2, 
-  Copy, Filter, ArrowUpDown, ChevronDown 
+  Copy, Filter, ArrowUpDown, ChevronDown, ArrowRight 
 } from 'lucide-react';
 import { CATEGORIES } from '../constants';
 
@@ -64,63 +64,67 @@ export const Library: React.FC<LibraryProps> = ({ stories, setStories, t }) => {
   };
 
   return (
-    <div className="space-y-8 fade-in">
-      <header className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-4xl font-bold mb-2">{t.library}</h1>
-          <p className="opacity-60">Sua coleção de mundos e palavras</p>
+    <div className="space-y-12 fade-in pb-20">
+      <header className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-8">
+        <div className="space-y-2">
+          <div className="section-tag">
+            <Book size={12} />
+            Acervo Literário
+          </div>
+          <h1 className="h1">{t.library}</h1>
+          <p className="font-serif italic text-lg text-white/40">Sua coleção de mundos e palavras imortalizadas.</p>
         </div>
-        <Link to="/editor" className="inkwell-button flex items-center gap-2">
-          <Plus size={20} />
+        <Link to="/editor" className="btn-primary">
+          <Plus size={18} />
           Nova História
         </Link>
       </header>
 
       {/* Filters & Search */}
-      <div className="flex flex-col lg:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 opacity-30" size={20} />
+      <div className="flex flex-col lg:flex-row gap-6 card-ink p-6">
+        <div className="relative flex-1 group">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-[var(--accent)] transition-colors" size={18} />
           <input 
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Pesquisar histórias..."
-            className="w-full bg-[var(--card)] border border-[var(--border)] rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:border-[var(--accent)]"
+            placeholder="Pesquisar manuscritos..."
+            className="input-field w-full pl-12"
           />
         </div>
-        <div className="flex gap-2">
-          <div className="relative">
+        <div className="flex flex-wrap gap-4">
+          <div className="relative group">
             <select 
               value={filterCategory}
               onChange={(e) => setFilterCategory(e.target.value)}
-              className="appearance-none bg-[var(--card)] border border-[var(--border)] rounded-xl py-3 pl-10 pr-10 focus:outline-none focus:border-[var(--accent)] text-sm font-medium"
+              className="input-field appearance-none pl-10 pr-10 cursor-pointer"
             >
-              <option value="all">Todas Categorias</option>
+              <option value="all" className="bg-[#07070e]">Todas Categorias</option>
               {CATEGORIES.map(cat => (
-                <option key={cat.id} value={cat.id}>{cat.label}</option>
+                <option key={cat.id} value={cat.id} className="bg-[#07070e]">{cat.label}</option>
               ))}
             </select>
-            <Filter className="absolute left-4 top-1/2 -translate-y-1/2 opacity-30" size={16} />
-            <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 opacity-30" size={16} />
+            <Filter className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-hover:text-[var(--accent)] transition-colors" size={16} />
+            <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-white/20" size={16} />
           </div>
-          <div className="relative">
+          <div className="relative group">
             <select 
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
-              className="appearance-none bg-[var(--card)] border border-[var(--border)] rounded-xl py-3 pl-10 pr-10 focus:outline-none focus:border-[var(--accent)] text-sm font-medium"
+              className="input-field appearance-none pl-10 pr-10 cursor-pointer"
             >
-              <option value="recent">{t.recent}</option>
-              <option value="oldest">{t.oldest}</option>
-              <option value="az">{t.az}</option>
-              <option value="mostWords">{t.mostWords}</option>
+              <option value="recent" className="bg-[#07070e]">{t.recent}</option>
+              <option value="oldest" className="bg-[#07070e]">{t.oldest}</option>
+              <option value="az" className="bg-[#07070e]">{t.az}</option>
+              <option value="mostWords" className="bg-[#07070e]">{t.mostWords}</option>
             </select>
-            <ArrowUpDown className="absolute left-4 top-1/2 -translate-y-1/2 opacity-30" size={16} />
-            <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 opacity-30" size={16} />
+            <ArrowUpDown className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-hover:text-[var(--accent)] transition-colors" size={16} />
+            <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-white/20" size={16} />
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
         {filteredStories.length > 0 ? (
           filteredStories.map((story) => {
             const category = CATEGORIES.find(c => c.id === story.category) || CATEGORIES[CATEGORIES.length - 1];
@@ -128,67 +132,76 @@ export const Library: React.FC<LibraryProps> = ({ stories, setStories, t }) => {
               <Link 
                 key={story.id} 
                 to={`/editor?id=${story.id}`}
-                className="inkwell-card group hover:border-[var(--accent)] flex flex-col h-full"
+                className="card-ink card-story group"
               >
+                <div className="page-number">#{story.id.slice(0, 3)}</div>
+                
                 <div className="flex justify-between items-start mb-4">
-                  <div className="flex items-center gap-2">
-                    <div className="p-2 bg-[var(--accent)]/10 text-[var(--accent)] rounded-lg">
-                      <FileText size={20} />
-                    </div>
-                    <span 
-                      className="text-[10px] uppercase font-bold tracking-widest px-2 py-1 rounded-md text-white"
-                      style={{ backgroundColor: category.color }}
-                    >
+                  <div className="flex items-center gap-3">
+                    <span className="section-tag">
                       {category.label}
                     </span>
                   </div>
-                  <div className="flex gap-1 transition-opacity">
+                  <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button 
                       onClick={(e) => handleDuplicate(story, e)}
-                      className="p-2 hover:bg-[var(--bg)] rounded-lg" title={t.duplicate}
+                      className="p-2 text-white/40 hover:text-[var(--accent)] transition-colors" title={t.duplicate}
                     >
                       <Copy size={16} />
                     </button>
                     <button 
                       onClick={(e) => handleDelete(story.id, e)}
-                      className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg" title={t.delete}
+                      className="p-2 text-white/40 hover:text-red-400 transition-colors" title={t.delete}
                     >
                       <Trash2 size={16} />
                     </button>
                   </div>
                 </div>
                 
-                <h3 className="text-xl font-bold font-serif mb-2 line-clamp-1">{story.title}</h3>
-                <p className="text-sm opacity-60 line-clamp-3 mb-6 flex-1 italic">
-                  {story.content || "Sem conteúdo..."}
-                </p>
+                <div className="space-y-2 flex-1">
+                  <h3 className="font-display text-[24px] font-semibold text-white group-hover:text-[var(--accent)] transition-colors leading-tight line-clamp-2">
+                    {story.title || "Sem título"}
+                  </h3>
+                  <p className="font-serif text-[15px] italic text-white/40 line-clamp-3 leading-relaxed">
+                    {story.content || "O silêncio da página em branco..."}
+                  </p>
+                </div>
                 
-                <div className="flex items-center justify-between pt-4 border-t border-[var(--border)] opacity-50 text-[10px] uppercase font-bold tracking-tighter">
-                  <span className="flex items-center gap-1">
-                    <Clock size={12} />
-                    {new Date(story.updatedAt).toLocaleDateString()}
-                  </span>
-                  <span>{story.wordCount} {t.wordCount}</span>
+                <div className="flex items-center gap-6 pt-6 mt-4 border-t border-[var(--border)]">
+                  <div className="flex flex-col">
+                    <span className="label">DATA</span>
+                    <span className="font-mono text-[11px] text-white/40">{new Date(story.updatedAt).toLocaleDateString()}</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="label">PALAVRAS</span>
+                    <span className="font-mono text-[11px] text-[var(--accent)]">{story.wordCount}</span>
+                  </div>
                 </div>
               </Link>
             );
           })
         ) : (
-          <div className="col-span-full py-20 text-center opacity-50 italic">
-            <Book size={48} className="mx-auto mb-4 opacity-20" />
-            <p className="text-xl mb-2">{t.noStories}</p>
-            <p className="text-sm">Que tal começar uma nova jornada hoje? ✨</p>
+          <div className="col-span-full py-24 text-center card-ink">
+            <div className="w-16 h-16 bg-[var(--accent)]/5 rounded-full flex items-center justify-center mx-auto mb-6">
+              <Book size={24} className="text-[var(--accent)]/50" />
+            </div>
+            <p className="font-display text-[24px] italic text-white/40 mb-4">{t.noStories}</p>
+            <p className="font-sans text-[13px] text-white/30 mb-8">Que tal começar uma nova jornada hoje? ✨</p>
+            <Link to="/editor" className="btn-ghost inline-block">Começar agora</Link>
           </div>
         )}
       </div>
       {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-[var(--card)] p-6 rounded-2xl border border-[var(--border)] max-w-sm w-full space-y-4">
-            <h3 className="text-lg font-bold">Excluir história?</h3>
-            <p className="opacity-60">Esta ação não pode ser desfeita.</p>
-            <div className="flex gap-2 justify-end">
-              <button onClick={() => setShowDeleteConfirm(null)} className="px-4 py-2 hover:bg-[var(--bg)] rounded-lg">Cancelar</button>
-              <button onClick={confirmDelete} className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">Excluir</button>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowDeleteConfirm(null)} />
+          <div className="relative card-ink max-w-md w-full space-y-8">
+            <div className="space-y-4">
+              <h3 className="text-2xl font-bold font-serif">Excluir história?</h3>
+              <p className="opacity-60 text-base leading-relaxed">Esta ação não pode ser desfeita.</p>
+            </div>
+            <div className="flex gap-4">
+              <button onClick={() => setShowDeleteConfirm(null)} className="btn-ghost flex-1">Cancelar</button>
+              <button onClick={confirmDelete} className="btn-primary flex-1 !bg-red-500 !text-white hover:!bg-red-600 shadow-lg shadow-red-500/20">Excluir</button>
             </div>
           </div>
         </div>

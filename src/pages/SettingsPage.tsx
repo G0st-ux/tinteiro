@@ -4,7 +4,6 @@ import { AppSettings, defaultSettings } from '../types';
 import { 
   Palette, Globe, Cpu, Database, Check, Trash2, Download, Upload
 } from 'lucide-react';
-import { supabase } from '../services/supabase';
 
 interface SettingsPageProps {
   settings: AppSettings;
@@ -55,27 +54,27 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   return (
     <div className="max-w-4xl mx-auto space-y-12 fade-in pb-20">
       <header>
-        <h1 className="text-4xl font-bold mb-2">{t.settings}</h1>
-        <p className="opacity-60">Personalize sua experiência de escrita</p>
+        <h1 className="text-4xl font-serif font-bold mb-2">{t.settings}</h1>
+        <p className="opacity-60 font-sans">Personalize sua experiência de escrita</p>
       </header>
 
       {/* Appearance */}
       <section className="space-y-6">
         <div className="flex items-center gap-3 text-[var(--accent)]">
           <Palette size={24} />
-          <h2 className="text-2xl font-bold">{t.appearance}</h2>
+          <h2 className="text-2xl font-serif font-bold">{t.appearance}</h2>
         </div>
         
-        <div className="inkwell-card space-y-8">
+        <div className="card-ink space-y-8 p-6">
           <div>
-            <p className="font-bold mb-4">{t.theme}</p>
+            <p className="font-serif font-bold mb-4">{t.theme}</p>
             <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-4">
               {Object.entries(THEMES).map(([key, theme]) => (
                 <button
                   key={key}
                   onClick={() => setSettings({ ...settings, theme: key })}
                   className={`
-                    group relative p-3 rounded-xl border-2 transition-all text-left
+                    group relative p-3 rounded-[2px] border-2 transition-all text-left
                     ${settings.theme === key ? 'border-[var(--accent)]' : 'border-transparent bg-[var(--bg)]'}
                   `}
                 >
@@ -98,7 +97,50 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center justify-between p-4 bg-[var(--bg)] rounded-xl">
+          <div>
+            <p className="font-serif font-bold mb-4">Cor de Destaque Personalizada</p>
+            <div className="flex flex-wrap gap-4 items-center">
+              <div className="relative group">
+                <input 
+                  type="color" 
+                  value={settings.accentColor}
+                  onChange={(e) => setSettings({ ...settings, accentColor: e.target.value })}
+                  className="w-14 h-14 rounded-[2px] cursor-pointer bg-transparent border-none appearance-none [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:rounded-[2px] [&::-webkit-color-swatch]:border-none shadow-xl"
+                />
+                <div className="absolute -top-2 -right-2 bg-accent text-black p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                  <Check size={12} />
+                </div>
+              </div>
+              
+              <div className="flex flex-wrap gap-2">
+                {[
+                  '#e2b850', // Gold
+                  '#7c6af7', // Purple
+                  '#4caf50', // Green
+                  '#2196f3', // Blue
+                  '#e53935', // Red
+                  '#ff7043', // Orange
+                  '#e91e8c', // Pink
+                  '#00bcd4', // Cyan
+                  '#ffffff', // White
+                ].map(color => (
+                  <button
+                    key={color}
+                    onClick={() => setSettings({ ...settings, accentColor: color })}
+                    className={`w-8 h-8 rounded-full border-2 transition-all hover:scale-110 ${settings.accentColor === color ? 'border-white scale-110 shadow-lg' : 'border-transparent'}`}
+                    style={{ backgroundColor: color }}
+                  />
+                ))}
+              </div>
+              
+              <div className="ml-auto text-right">
+                <p className="text-xs font-mono opacity-40 uppercase tracking-widest">{settings.accentColor}</p>
+                <p className="text-[10px] opacity-20 italic font-serif">A interface se adaptará a esta cor</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between p-4 bg-[var(--bg)] rounded-[2px]">
             <div>
               <p className="font-bold">{t.compactMode}</p>
               <p className="text-sm opacity-60">Reduz o espaçamento entre elementos</p>
@@ -117,17 +159,17 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
       <section className="space-y-6">
         <div className="flex items-center gap-3 text-[var(--accent)]">
           <Globe size={24} />
-          <h2 className="text-2xl font-bold">{t.language}</h2>
+          <h2 className="text-2xl font-serif font-bold">{t.language}</h2>
         </div>
         
-        <div className="inkwell-card">
+        <div className="card-ink p-6">
           <div className="grid grid-cols-3 gap-4">
             {Object.keys(TRANSLATIONS).map((lang) => (
               <button
                 key={lang}
                 onClick={() => setSettings({ ...settings, language: lang as any })}
                 className={`
-                  p-4 rounded-xl border-2 transition-all font-bold
+                  p-4 rounded-[2px] border-2 transition-all font-bold
                   ${settings.language === lang ? 'border-[var(--accent)] bg-[var(--accent)] text-white' : 'border-[var(--border)] hover:border-[var(--accent)]'}
                 `}
               >
@@ -142,35 +184,35 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
       <section className="space-y-6">
         <div className="flex items-center gap-3 text-[var(--accent)]">
           <Cpu size={24} />
-          <h2 className="text-2xl font-bold">{t.aiConfig}</h2>
+          <h2 className="text-2xl font-serif font-bold">{t.aiConfig}</h2>
         </div>
         
-        <div className="inkwell-card space-y-6">
+        <div className="card-ink space-y-6 p-6">
           <div className="space-y-2">
-            <label className="text-sm font-bold opacity-70">Gemini API Key</label>
+            <label className="label">Gemini API Key</label>
             <input 
               type="password"
               value={settings.geminiKey}
               onChange={(e) => setSettings({ ...settings, geminiKey: e.target.value })}
               placeholder="Sua chave da API do Gemini"
-              className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-xl p-3 focus:outline-none focus:border-[var(--accent)]"
+              className="input-field w-full"
             />
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-bold opacity-70">Image API Key (Opcional)</label>
+            <label className="label">Image API Key (Opcional)</label>
             <input 
               type="password"
               value={settings.imageKey}
               onChange={(e) => setSettings({ ...settings, imageKey: e.target.value })}
               placeholder="Chave para geração de imagens"
-              className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-xl p-3 focus:outline-none focus:border-[var(--accent)]"
+              className="input-field w-full"
             />
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-[var(--bg)] rounded-xl">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-[var(--bg)] rounded-[2px]">
             <p className="text-sm opacity-70">{t.aiKeyInfo}</p>
-            <button className="inkwell-button whitespace-nowrap">{t.testConnection}</button>
+            <button className="btn-primary whitespace-nowrap">{t.testConnection}</button>
           </div>
         </div>
       </section>
@@ -179,19 +221,19 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
       <section className="space-y-6">
         <div className="flex items-center gap-3 text-[var(--accent)]">
           <Database size={24} />
-          <h2 className="text-2xl font-bold">{t.data}</h2>
+          <h2 className="text-2xl font-serif font-bold">{t.data}</h2>
         </div>
         
-        <div className="inkwell-card grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="card-ink grid grid-cols-1 sm:grid-cols-3 gap-4 p-6">
           <button 
             onClick={handleExport}
-            className="flex items-center justify-center gap-2 p-4 rounded-xl border border-[var(--border)] hover:bg-[var(--accent)] hover:text-white transition-all font-bold"
+            className="flex items-center justify-center gap-2 p-4 rounded-[2px] border border-[var(--border)] hover:bg-[var(--accent)] hover:text-white transition-all font-bold"
           >
             <Download size={20} />
             {t.exportAll}
           </button>
           
-          <label className="flex items-center justify-center gap-2 p-4 rounded-xl border border-[var(--border)] hover:bg-[var(--accent)] hover:text-white transition-all font-bold cursor-pointer">
+          <label className="flex items-center justify-center gap-2 p-4 rounded-[2px] border border-[var(--border)] hover:bg-[var(--accent)] hover:text-white transition-all font-bold cursor-pointer">
             <Upload size={20} />
             {t.import}
             <input type="file" className="hidden" onChange={handleImport} accept=".json" />
@@ -199,7 +241,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
           <button 
             onClick={handleClearData}
-            className="flex items-center justify-center gap-2 p-4 rounded-xl border border-red-500/30 text-red-500 hover:bg-red-500 hover:text-white transition-all font-bold"
+            className="flex items-center justify-center gap-2 p-4 rounded-[2px] border border-red-500/30 text-red-500 hover:bg-red-500 hover:text-white transition-all font-bold"
           >
             <Trash2 size={20} />
             {t.clear}

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { supabase } from '../services/supabase';
+import { db, UserProfile } from '../firebase';
+import { collection, query, where, getDocs, limit, orderBy, addDoc, deleteDoc, doc } from 'firebase/firestore';
 import { 
   Search, User, Users, BookOpen, Loader2, 
   UserPlus, UserMinus, ChevronRight 
@@ -9,6 +10,7 @@ import { criarNotificacao } from '../services/notificacoesService';
 
 interface UsuarioResultado {
   id: string;
+  uid: string;
   nome: string;
   foto?: string;
   biografia?: string;
@@ -17,7 +19,7 @@ interface UsuarioResultado {
 }
 
 interface BuscaUsuariosProps {
-  usuario: { id: string; nome: string; foto?: string; };
+  usuario: UserProfile;
   t: any;
 }
 
@@ -33,32 +35,29 @@ export const BuscaUsuarios: React.FC<BuscaUsuariosProps> = ({ usuario, t }) => {
 
   const buscarSugestoes = async () => {
     try {
-      const { data, error } = await supabase
-        .from('usuarios')
-        .select('*')
-        .neq('id', usuario.id)
-        .eq('banido', false)
-        .limit(10);
-
-      if (error) throw error;
+      const q = query(
+        collection(db, 'users_public'),
+        where('uid', '!=', usuario.uid),
+        limit(10)
+      );
+      
+      const snap = await getDocs(q);
+      const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
 
       const usuariosComContagem = await Promise.all(
-        (data || []).map(async (u) => {
-          const [{ count: seguidores_count }, { count: historias_count }] = await Promise.all([
-            supabase
-              .from('seguidores')
-              .select('*', { count: 'exact', head: true })
-              .eq('seguido_id', u.id),
-            supabase
-              .from('historias')
-              .select('*', { count: 'exact', head: true })
-              .eq('autor_id', u.id)
+        data.map(async (u) => {
+          const followersQ = query(collection(db, 'seguidores'), where('seguido_id', '==', u.uid));
+          const storiesQ = query(collection(db, 'stories'), where('authorId', '==', u.uid));
+          
+          const [followersSnap, storiesSnap] = await Promise.all([
+            getDocs(followersQ),
+            getDocs(storiesQ)
           ]);
 
           return {
             ...u,
-            seguidores_count: seguidores_count || 0,
-            historias_count: historias_count || 0,
+            seguidores_count: followersSnap.size,
+            historias_count: storiesSnap.size,
           };
         })
       );
@@ -72,15 +71,11 @@ export const BuscaUsuarios: React.FC<BuscaUsuariosProps> = ({ usuario, t }) => {
   };
 
   const buscarSeguindo = async () => {
-    if (!usuario?.id) return;
+    if (!usuario?.uid) return;
     try {
-      const { data, error } = await supabase
-        .from('seguidores')
-        .select('seguido_id')
-        .eq('seguidor_id', usuario.id);
-
-      if (error) throw error;
-      setSeguindoIds(new Set(data.map(s => s.seguido_id)));
+      const q = query(collection(db, 'seguidores'), where('seguidor_id', '==', usuario.uid));
+      const snap = await getDocs(q);
+      setSeguindoIds(new Set(snap.docs.map(s => s.data().seguido_id)));
     } catch (err: any) {
       console.error('Erro ao buscar seguindo:', err);
     }
@@ -89,7 +84,7 @@ export const BuscaUsuarios: React.FC<BuscaUsuariosProps> = ({ usuario, t }) => {
   useEffect(() => {
     buscarSugestoes();
     buscarSeguindo();
-  }, [usuario.id]);
+  }, [usuario.uid]);
 
   const realizarBusca = useCallback(async (termo: string) => {
     if (!termo.trim()) {
@@ -99,33 +94,31 @@ export const BuscaUsuarios: React.FC<BuscaUsuariosProps> = ({ usuario, t }) => {
 
     setCarregando(true);
     try {
-      const { data, error } = await supabase
-        .from('usuarios')
-        .select('*')
-        .ilike('nome', `%${termo}%`)
-        .neq('id', usuario.id)
-        .eq('banido', false)
-        .limit(20);
-
-      if (error) throw error;
+      // Firebase doesn't support ilike naturally, we'll do a simple prefix search or just fetch and filter
+      // For now, let's fetch all and filter client-side for better UX in this small app
+      const q = query(collection(db, 'users_public'), limit(100));
+      const snap = await getDocs(q);
+      const allUsers = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
+      
+      const filtered = allUsers.filter(u => 
+        u.uid !== usuario.uid && 
+        u.nome.toLowerCase().includes(termo.toLowerCase())
+      );
 
       const usuariosComContagem = await Promise.all(
-        (data || []).map(async (u) => {
-          const [{ count: seguidores_count }, { count: historias_count }] = await Promise.all([
-            supabase
-              .from('seguidores')
-              .select('*', { count: 'exact', head: true })
-              .eq('seguido_id', u.id),
-            supabase
-              .from('historias')
-              .select('*', { count: 'exact', head: true })
-              .eq('autor_id', u.id)
+        filtered.slice(0, 20).map(async (u) => {
+          const followersQ = query(collection(db, 'seguidores'), where('seguido_id', '==', u.uid));
+          const storiesQ = query(collection(db, 'stories'), where('authorId', '==', u.uid));
+          
+          const [followersSnap, storiesSnap] = await Promise.all([
+            getDocs(followersQ),
+            getDocs(storiesQ)
           ]);
 
           return {
             ...u,
-            seguidores_count: seguidores_count || 0,
-            historias_count: historias_count || 0,
+            seguidores_count: followersSnap.size,
+            historias_count: storiesSnap.size,
           };
         })
       );
@@ -136,7 +129,7 @@ export const BuscaUsuarios: React.FC<BuscaUsuariosProps> = ({ usuario, t }) => {
     } finally {
       setCarregando(false);
     }
-  }, [usuario.id]);
+  }, [usuario.uid]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -150,40 +143,39 @@ export const BuscaUsuarios: React.FC<BuscaUsuariosProps> = ({ usuario, t }) => {
     e.preventDefault();
     e.stopPropagation();
     
-    const meuId = usuario?.id || (usuario as any)?.uid;
-    
-    if (!meuId) return;
+    if (!usuario?.uid) return;
     if (processandoId) return;
-    setProcessandoId(alvo.id);
+    setProcessandoId(alvo.uid);
     
-    const jaSegue = seguindoIds.has(alvo.id);
+    const jaSegue = seguindoIds.has(alvo.uid);
 
     try {
       if (jaSegue) {
-        const { error } = await supabase
-          .from('seguidores')
-          .delete()
-          .eq('seguidor_id', meuId)
-          .eq('seguido_id', alvo.id);
-
-        if (error) throw error;
+        const q = query(
+          collection(db, 'seguidores'),
+          where('seguidor_id', '==', usuario.uid),
+          where('seguido_id', '==', alvo.uid)
+        );
+        const snap = await getDocs(q);
+        const deletePromises = snap.docs.map(d => deleteDoc(d.ref));
+        await Promise.all(deletePromises);
         
         setSeguindoIds(prev => {
           const next = new Set(prev);
-          next.delete(alvo.id);
+          next.delete(alvo.uid);
           return next;
         });
       } else {
-        const { error } = await supabase
-          .from('seguidores')
-          .insert({ seguidor_id: meuId, seguido_id: alvo.id });
-
-        if (error) throw error;
+        await addDoc(collection(db, 'seguidores'), {
+          seguidor_id: usuario.uid,
+          seguido_id: alvo.uid,
+          criado_em: new Date().toISOString()
+        });
         
-        setSeguindoIds(prev => new Set(prev).add(alvo.id));
+        setSeguindoIds(prev => new Set(prev).add(alvo.uid));
         
         await criarNotificacao(
-          alvo.id, 
+          alvo.uid, 
           'seguidor', 
           `${usuario.nome} começou a te seguir!`, 
           '/perfil'
@@ -198,23 +190,23 @@ export const BuscaUsuarios: React.FC<BuscaUsuariosProps> = ({ usuario, t }) => {
 
   const renderUsuario = (u: UsuarioResultado) => (
     <div 
-      key={u.id}
-      onClick={() => navigate(`/perfil?id=${u.id}`)}
-      className="group flex items-center gap-4 p-4 bg-[var(--card)] border border-[var(--border)] rounded-3xl hover:border-[var(--accent)]/40 transition-all cursor-pointer shadow-sm hover:shadow-md"
+      key={u.uid}
+      onClick={() => navigate(`/perfil?id=${u.uid}`)}
+      className="group flex items-center gap-4 p-4 card-ink hover:border-[var(--accent)]/40 transition-all cursor-pointer shadow-sm hover:shadow-md"
     >
       <div className="w-14 h-14 rounded-2xl overflow-hidden bg-[var(--bg)] border border-[var(--border)] flex-shrink-0">
         {u.foto ? (
           <img src={u.foto} alt={u.nome} className="w-full h-full object-cover" />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-[var(--accent)] bg-[var(--accent)]/10 font-bold text-xl">
+          <div className="w-full h-full flex items-center justify-center text-[var(--accent)] bg-[var(--accent)]/10 font-bold font-serif text-xl">
             {u.nome.charAt(0).toUpperCase()}
           </div>
         )}
       </div>
 
       <div className="flex-1 min-w-0">
-        <h3 className="font-bold text-lg truncate">{u.nome}</h3>
-        <div className="flex items-center gap-3 text-xs opacity-50 font-medium">
+        <h3 className="font-bold font-serif text-lg truncate">{u.nome}</h3>
+        <div className="flex items-center gap-3 text-xs opacity-50 font-medium font-sans">
           <span className="flex items-center gap-1"><Users size={12} /> {u.seguidores_count || 0} seguidores</span>
           <span className="flex items-center gap-1"><BookOpen size={12} /> {u.historias_count || 0} histórias</span>
         </div>
@@ -222,18 +214,18 @@ export const BuscaUsuarios: React.FC<BuscaUsuariosProps> = ({ usuario, t }) => {
 
       <button 
         onClick={(e) => handleSeguir(u, e)}
-        disabled={processandoId === u.id}
+        disabled={processandoId === u.uid}
         className={`
           relative z-10 px-5 py-2.5 rounded-2xl text-sm font-bold transition-all flex items-center gap-2
-          ${seguindoIds.has(u.id) 
+          ${seguindoIds.has(u.uid) 
             ? 'bg-[var(--bg)] text-[var(--text)] border border-[var(--border)]' 
             : 'bg-[var(--accent)] text-white shadow-lg shadow-[var(--accent)]/20'}
-          ${processandoId === u.id ? 'opacity-50' : 'hover:scale-105 active:scale-95'}
+          ${processandoId === u.uid ? 'opacity-50' : 'hover:scale-105 active:scale-95'}
         `}
       >
-        {processandoId === u.id ? (
+        {processandoId === u.uid ? (
           <Loader2 size={16} className="animate-spin" />
-        ) : seguindoIds.has(u.id) ? (
+        ) : seguindoIds.has(u.uid) ? (
           <><UserMinus size={16} /> Seguindo</>
         ) : (
           <><UserPlus size={16} /> Seguir</>
@@ -261,7 +253,7 @@ export const BuscaUsuarios: React.FC<BuscaUsuariosProps> = ({ usuario, t }) => {
             value={busca}
             onChange={e => setBusca(e.target.value)}
             placeholder="Busque por nome ou @usuário..."
-            className="w-full bg-[var(--card)] border border-[var(--border)] rounded-[2rem] pl-16 pr-8 py-5 text-lg outline-none focus:border-[var(--accent)] focus:shadow-xl focus:shadow-[var(--accent)]/5 transition-all"
+            className="input-field w-full pl-16 pr-8 py-5 text-lg"
           />
         </div>
       </header>

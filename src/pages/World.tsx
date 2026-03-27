@@ -79,37 +79,38 @@ export const World: React.FC<WorldProps> = ({ settings, locations, setLocations,
   return (
     <div className="space-y-8 fade-in pb-20">
       <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-4xl font-bold mb-2 flex items-center gap-3">
-            <Globe className="text-[var(--accent)]" />
-            {t.world}
-          </h1>
-          <p className="opacity-60">Mapeie os reinos e cidades da sua imaginação</p>
+        <div className="space-y-2">
+          <div className="section-tag">
+            <Globe size={12} />
+            Mundo
+          </div>
+          <h1 className="h1">{t.world}</h1>
+          <p className="font-serif italic text-lg text-white/40">Mapeie os reinos e cidades da sua imaginação</p>
         </div>
         {!isFormOpen && (
           <button 
             onClick={() => { setForm(initialFormState); setEditingId(null); setIsFormOpen(true); }} 
-            className="inkwell-button flex items-center gap-2"
+            className="btn-primary"
           >
-            <Plus size={20} />
+            <Plus size={18} />
             Novo Local
           </button>
         )}
       </header>
 
       {isFormOpen ? (
-        <div className="inkwell-card space-y-8 fade-in">
+        <div className="card-ink space-y-8 fade-in">
           <div className="flex items-center justify-between border-b border-[var(--border)] pb-4">
             <h2 className="text-2xl font-bold font-serif">{editingId ? 'Editar' : 'Novo'} Local</h2>
             <div className="flex gap-2">
-              <button onClick={() => setIsFormOpen(false)} className="px-4 py-2 opacity-60 hover:opacity-100">Cancelar</button>
-              <button onClick={handleSave} className="inkwell-button">Salvar</button>
+              <button onClick={() => setIsFormOpen(false)} className="btn-ghost">Cancelar</button>
+              <button onClick={handleSave} className="btn-primary">Salvar</button>
             </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="space-y-6">
-              <div className="aspect-video bg-[var(--bg)] border border-[var(--border)] rounded-2xl overflow-hidden relative group">
+              <div className="aspect-video bg-[var(--bg)] border border-[var(--border)] rounded-[2px] overflow-hidden relative group">
                 {form.imageUrl ? (
                   <img src={form.imageUrl} alt={form.name} className="w-full h-full object-cover" />
                 ) : (
@@ -129,20 +130,20 @@ export const World: React.FC<WorldProps> = ({ settings, locations, setLocations,
 
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase opacity-50">Nome do Local</label>
+                  <label className="label">Nome do Local</label>
                   <input 
                     type="text" 
                     value={form.name}
                     onChange={e => setForm({...form, name: e.target.value})}
-                    className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-2 focus:border-[var(--accent)] outline-none"
+                    className="input-field"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase opacity-50">Tipo</label>
+                  <label className="label">Tipo</label>
                   <select 
                     value={form.type}
                     onChange={e => setForm({...form, type: e.target.value})}
-                    className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-2 focus:border-[var(--accent)] outline-none"
+                    className="input-field"
                   >
                     {LOCATION_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
@@ -153,45 +154,45 @@ export const World: React.FC<WorldProps> = ({ settings, locations, setLocations,
             <div className="lg:col-span-2 space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase opacity-50">Clima e Geografia</label>
+                  <label className="label">Clima e Geografia</label>
                   <input 
                     type="text" 
                     value={form.climate}
                     onChange={e => setForm({...form, climate: e.target.value})}
-                    className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-2 focus:border-[var(--accent)] outline-none"
+                    className="input-field"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase opacity-50">Habitantes / Povos</label>
+                  <label className="label">Habitantes / Povos</label>
                   <input 
                     type="text" 
                     value={form.inhabitants}
                     onChange={e => setForm({...form, inhabitants: e.target.value})}
-                    className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-2 focus:border-[var(--accent)] outline-none"
+                    className="input-field"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-bold uppercase opacity-50">Descrição Detalhada</label>
+                <label className="label">Descrição Detalhada</label>
                 <textarea 
                   value={form.description}
                   onChange={e => setForm({...form, description: e.target.value})}
-                  className="w-full h-32 bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-2 focus:border-[var(--accent)] outline-none resize-none font-serif"
+                  className="input-field h-32 resize-none font-serif"
                 />
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-bold uppercase opacity-50">Pontos de Interesse</label>
+                <label className="label">Pontos de Interesse</label>
                 <textarea 
                   value={form.pointsOfInterest}
                   onChange={e => setForm({...form, pointsOfInterest: e.target.value})}
-                  className="w-full h-24 bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-2 focus:border-[var(--accent)] outline-none resize-none"
+                  className="input-field h-24 resize-none"
                 />
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-bold uppercase opacity-50">Conexões (Outros Locais)</label>
+                <label className="label">Conexões (Outros Locais)</label>
                 <div className="flex flex-wrap gap-2">
                   {locations.filter(l => l.id !== editingId).map(l => (
                     <button
@@ -202,17 +203,17 @@ export const World: React.FC<WorldProps> = ({ settings, locations, setLocations,
                           : [...form.connections, l.id];
                         setForm({...form, connections: newConns});
                       }}
-                      className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all flex items-center gap-2 ${
+                      className={`px-3 py-1.5 rounded-[2px] text-[10px] uppercase tracking-widest font-bold border transition-all flex items-center gap-2 ${
                         form.connections.includes(l.id)
-                          ? 'bg-[var(--accent)] border-[var(--accent)] text-white'
-                          : 'bg-[var(--bg)] border-[var(--border)] opacity-60'
+                          ? 'bg-[var(--accent)] border-[var(--accent)] text-black'
+                          : 'bg-[var(--bg)] border-[var(--border)] text-white/40 hover:text-white'
                       }`}
                     >
                       <LinkIcon size={12} />
                       {l.name}
                     </button>
                   ))}
-                  {locations.length <= 1 && <p className="text-xs opacity-40 italic">Nenhum outro local cadastrado para conectar.</p>}
+                  {locations.length <= 1 && <p className="text-xs opacity-40 italic font-serif">Nenhum outro local cadastrado para conectar.</p>}
                 </div>
               </div>
             </div>
@@ -221,37 +222,47 @@ export const World: React.FC<WorldProps> = ({ settings, locations, setLocations,
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {locations.map((loc) => (
-            <div key={loc.id} className="inkwell-card group hover:border-[var(--accent)] flex flex-col gap-4">
-              <div className="aspect-video bg-[var(--bg)] border border-[var(--border)] rounded-xl overflow-hidden relative">
+            <div key={loc.id} className="card-ink group flex flex-col gap-4 p-6">
+              <div className="aspect-video bg-[var(--bg)] border border-[var(--border)] rounded-[2px] overflow-hidden relative">
                 {loc.imageUrl ? (
-                  <img src={loc.imageUrl} alt={loc.name} className="w-full h-full object-cover" />
+                  <img src={loc.imageUrl} alt={loc.name} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center opacity-20">
                     <Compass size={48} />
                   </div>
                 )}
                 <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button onClick={() => handleEdit(loc)} className="p-2 bg-black/50 text-white rounded-lg hover:bg-[var(--accent)]"><Edit2 size={14} /></button>
-                  <button onClick={() => handleDelete(loc.id)} className="p-2 bg-black/50 text-white rounded-lg hover:bg-red-500"><Trash2 size={14} /></button>
+                  <button onClick={() => handleEdit(loc)} className="p-2 bg-black/50 text-white rounded-[2px] hover:bg-[var(--accent)] hover:text-black transition-colors"><Edit2 size={14} /></button>
+                  <button onClick={() => handleDelete(loc.id)} className="p-2 bg-black/50 text-white rounded-[2px] hover:bg-red-500 transition-colors"><Trash2 size={14} /></button>
                 </div>
-                <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/50 text-white text-[10px] font-bold uppercase rounded">
+                <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/50 text-white text-[10px] font-bold uppercase rounded-[2px] tracking-widest">
                   {loc.type}
                 </div>
               </div>
               <div>
-                <h3 className="text-xl font-bold truncate font-serif">{loc.name}</h3>
-                <p className="text-sm opacity-60 line-clamp-2 mt-1">{loc.description}</p>
+                <h3 className="font-display text-[24px] font-semibold text-white group-hover:text-[var(--accent)] transition-colors leading-tight truncate">{loc.name}</h3>
+                <p className="font-sans text-[14px] text-white/40 line-clamp-2 mt-2 leading-relaxed">{loc.description}</p>
               </div>
-              <div className="mt-auto pt-4 border-t border-[var(--border)] flex items-center justify-between text-[10px] font-bold uppercase opacity-50">
-                <span>{loc.climate || 'Clima desconhecido'}</span>
-                <span>{loc.connections.length} conexões</span>
+              <div className="mt-auto pt-4 border-t border-[var(--border)] flex items-center justify-between">
+                <div className="flex flex-col">
+                  <span className="label">CLIMA</span>
+                  <span className="font-mono text-[11px] text-white/40">{loc.climate || 'Desconhecido'}</span>
+                </div>
+                <div className="flex flex-col text-right">
+                  <span className="label">CONEXÕES</span>
+                  <span className="font-mono text-[11px] text-[var(--accent)]">{loc.connections.length}</span>
+                </div>
               </div>
             </div>
           ))}
           {locations.length === 0 && (
-            <div className="col-span-full py-20 text-center opacity-30">
-              <Globe size={64} className="mx-auto mb-4" />
-              <p className="text-xl font-serif">{t.noLocations}</p>
+            <div className="col-span-full py-24 text-center card-ink">
+              <div className="w-16 h-16 bg-[var(--accent)]/5 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Globe size={24} className="text-[var(--accent)]/50" />
+              </div>
+              <p className="font-display text-[24px] italic text-white/40 mb-4">{t.noLocations}</p>
+              <p className="font-sans text-[13px] text-white/30 mb-8">O mapa ainda está em branco. ✨</p>
+              <button onClick={() => { setForm(initialFormState); setEditingId(null); setIsFormOpen(true); }} className="btn-ghost mx-auto">Mapear Novo Local</button>
             </div>
           )}
         </div>

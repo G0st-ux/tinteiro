@@ -92,34 +92,34 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({ settings, charac
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-4 space-y-6">
-          <div className="inkwell-card space-y-6">
+          <div className="card-ink space-y-6">
             <div className="space-y-2">
-              <label className="text-xs font-bold uppercase opacity-50">O que você quer gerar?</label>
+              <label className="label">O que você quer gerar?</label>
               <textarea 
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 placeholder="Descreva o que quer gerar..."
-                className="w-full h-32 bg-[var(--bg)] border border-[var(--border)] rounded-xl p-4 focus:outline-none focus:border-[var(--accent)] resize-none font-serif"
+                className="input-field w-full h-32 resize-none"
               />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <label className="text-xs font-bold uppercase opacity-50">Estilo</label>
+                <label className="label">Estilo</label>
                 <select 
                   value={style}
                   onChange={(e) => setStyle(e.target.value)}
-                  className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-xl p-3 focus:outline-none focus:border-[var(--accent)] text-sm"
+                  className="input-field w-full bg-[#07070e]"
                 >
                   {IMAGE_STYLES.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
               <div className="space-y-2">
-                <label className="text-xs font-bold uppercase opacity-50">Tipo</label>
+                <label className="label">Tipo</label>
                 <select 
                   value={type}
                   onChange={(e) => setType(e.target.value)}
-                  className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-xl p-3 focus:outline-none focus:border-[var(--accent)] text-sm"
+                  className="input-field w-full bg-[#07070e]"
                 >
                   {IMAGE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
@@ -129,30 +129,30 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({ settings, charac
             <button 
               onClick={handleGenerate}
               disabled={isLoading || !prompt.trim()}
-              className="w-full inkwell-button py-4 flex items-center justify-center gap-3 text-lg shadow-lg"
+              className="btn-primary w-full py-4 flex items-center justify-center gap-3 text-lg"
             >
               {isLoading ? <Loader2 className="animate-spin" /> : <Sparkles />}
               {isLoading ? "Gerando..." : "🎨 Gerar Imagem"}
             </button>
           </div>
 
-          <div className="inkwell-card space-y-4">
-            <h2 className="text-xl font-bold flex items-center gap-2">
+          <div className="card-ink space-y-4">
+            <h2 className="text-xl font-bold font-serif flex items-center gap-2">
               <History size={20} />
               Histórico
             </h2>
             <div className="grid grid-cols-2 gap-2">
               {history.map(img => (
-                <div key={img.id} className="aspect-square bg-[var(--bg)] rounded-lg overflow-hidden relative group border border-[var(--border)]">
+                <div key={img.id} className="aspect-square bg-[var(--bg)] rounded-[2px] overflow-hidden relative group border border-[var(--border)]">
                   <img src={img.url} alt={img.prompt} className="w-full h-full object-cover" />
                   <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                    <button onClick={() => setCurrentImage(img.url)} className="p-1.5 bg-white text-black rounded-lg"><RefreshCw size={14} /></button>
-                    <button onClick={() => deleteFromHistory(img.id)} className="p-1.5 bg-red-500 text-white rounded-lg"><Trash2 size={14} /></button>
+                    <button onClick={() => setCurrentImage(img.url)} className="p-1.5 bg-white text-black rounded-[2px] hover:bg-[var(--accent)] transition-colors"><RefreshCw size={14} /></button>
+                    <button onClick={() => deleteFromHistory(img.id)} className="p-1.5 bg-red-500 text-white rounded-[2px] hover:bg-red-600 transition-colors"><Trash2 size={14} /></button>
                   </div>
                 </div>
               ))}
               {history.length === 0 && (
-                <div className="col-span-2 py-8 text-center opacity-20 italic text-sm">
+                <div className="col-span-2 py-8 text-center opacity-20 italic text-sm font-sans">
                   Sem histórico
                 </div>
               )}
@@ -161,7 +161,7 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({ settings, charac
         </div>
 
         <div className="lg:col-span-8 space-y-6">
-          <div className="inkwell-card aspect-square lg:aspect-video flex items-center justify-center overflow-hidden p-0 relative group shadow-2xl">
+          <div className="card-ink aspect-square lg:aspect-video flex items-center justify-center overflow-hidden p-0 relative group shadow-2xl">
             {currentImage ? (
               <>
                 <img 
@@ -174,16 +174,16 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({ settings, charac
                 <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-4 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button 
                     onClick={() => handleDownload(currentImage)} 
-                    className="flex items-center gap-2 px-6 py-3 bg-white text-black rounded-full font-bold shadow-xl hover:scale-105 transition-transform"
+                    className="flex items-center gap-2 px-6 py-3 bg-[var(--accent)] text-black rounded-[2px] font-bold shadow-xl hover:scale-105 transition-transform uppercase tracking-widest text-[10px]"
                   >
-                    <Download size={20} />
+                    <Download size={16} />
                     Salvar
                   </button>
                   <button 
                     onClick={() => handleLinkToCharacter(currentImage)}
-                    className="flex items-center gap-2 px-6 py-3 bg-[var(--accent)] text-white rounded-full font-bold shadow-xl hover:scale-105 transition-transform"
+                    className="flex items-center gap-2 px-6 py-3 bg-white text-black rounded-[2px] font-bold shadow-xl hover:scale-105 transition-transform uppercase tracking-widest text-[10px]"
                   >
-                    <User size={20} />
+                    <User size={16} />
                     Vincular
                   </button>
                 </div>
@@ -195,7 +195,7 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({ settings, charac
               </div>
             )}
             {isLoading && (
-              <div className="absolute inset-0 bg-[var(--card)]/80 backdrop-blur-sm flex flex-col items-center justify-center gap-6">
+              <div className="absolute inset-0 bg-[#07070e]/80 backdrop-blur-sm flex flex-col items-center justify-center gap-6">
                 <div className="relative">
                   <Loader2 size={64} className="animate-spin text-[var(--accent)]" />
                   <Sparkles className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[var(--accent)]" size={24} />
@@ -209,8 +209,8 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({ settings, charac
           </div>
           
           {currentImage && (
-            <div className="inkwell-card bg-[var(--accent)]/5 border-[var(--accent)]/20">
-              <p className="text-sm opacity-70 leading-relaxed italic">
+            <div className="card-ink bg-[var(--accent)]/5 border-[var(--accent)]/20">
+              <p className="text-sm opacity-70 leading-relaxed italic font-serif">
                 "A arte é a expressão da alma. Use esta imagem para inspirar novos capítulos e dar profundidade ao seu mundo."
               </p>
             </div>

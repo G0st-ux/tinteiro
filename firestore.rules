@@ -1,0 +1,239 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {uid}
+    // Fields:
+    //   - uid: string (required) - ID único do Firebase Auth
+    //   - nome: string (required) - Nome de exibição
+    //   - email: string (required, format: email) - Email do usuário
+    //   - foto: string (optional) - URL da foto de perfil
+    //   - bio: string (optional) - Biografia do autor
+    //   - idioma: string (optional, enum: ["pt", "en", "es"]) - Idioma preferido
+    //   - banido: bool (required) - Status de banimento
+    //   - criado_em: string (required, format: date-time) - Data de criação
+    //   - role: string (required, enum: ["user", "admin"]) - Papel do usuário
+    //
+    // Collection: stories
+    // Document ID: {storyId}
+    // Fields:
+    //   - id: string (required) - ID único da história
+    //   - title: string (required) - Título da história
+    //   - content: string (optional) - Conteúdo da história
+    //   - authorId: string (required) - ID do autor (uid)
+    //   - category: string (optional) - Categoria da história
+    //   - tags: list (optional) - Lista de tags
+    //   - isPublic: bool (required) - Se a história é pública
+    //   - createdAt: string (required, format: date-time) - Data de criação
+    //   - updatedAt: string (required, format: date-time) - Data de atualização
+    //
+    // Collection: notificacoes
+    // Document ID: {notifId}
+    // Fields:
+    //   - id: string (required) - ID único da notificação
+    //   - usuario_id: string (required) - ID do usuário destinatário
+    //   - titulo: string (required) - Título da notificação
+    //   - mensagem: string (required) - Mensagem da notificação
+    //   - lida: bool (required) - Status de leitura
+    //   - criado_em: string (required, format: date-time) - Data de criação
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         (request.auth.token.email == "jvictor96245@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidDateString(dateStr) {
+      return dateStr is string && dateStr.matches("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.*Z?$");
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidUser(data) {
+      return hasRequiredFields(['uid', 'nome', 'email', 'role', 'banido', 'criado_em']) &&
+             data.uid is string && data.uid.size() > 0 &&
+             data.nome is string && data.nome.size() > 0 && data.nome.size() < 100 &&
+             isValidEmail(data.email) &&
+             data.role in ['user', 'admin'] &&
+             data.banido is bool &&
+             isValidDateString(data.criado_em);
+    }
+
+    function isValidStory(data) {
+      return hasRequiredFields(['id', 'title', 'authorId', 'isPublic', 'createdAt']) &&
+             data.id is string && data.id.size() > 0 &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
+             data.authorId is string &&
+             data.isPublic is bool &&
+             isValidDateString(data.createdAt);
+    }
+
+    function isValidNotification(data) {
+      return hasRequiredFields(['id', 'usuario_id', 'titulo', 'mensagem', 'lida', 'criado_em']) &&
+             data.id is string &&
+             data.usuario_id is string &&
+             data.titulo is string && data.titulo.size() < 100 &&
+             data.mensagem is string && data.mensagem.size() < 500 &&
+             data.lida is bool &&
+             isValidDateString(data.criado_em);
+    }
+
+    function isValidChapter(data) {
+      return hasRequiredFields(['title', 'createdAt']) &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
+             isValidDateString(data.createdAt);
+    }
+
+    function isValidRoom(data) {
+      return hasRequiredFields(['id', 'name', 'ownerId', 'createdAt']) &&
+             data.id is string &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.ownerId is string &&
+             isValidDateString(data.createdAt);
+    }
+
+    // ===============================================================
+    // Match Rules
+    // ===============================================================
+
+    match /users/{uid} {
+      // PII Protection: Only owner or admin can read the full profile (which contains email)
+      allow read: if isOwner(uid) || isAdmin();
+      allow create: if isAuthenticated() && isOwner(uid) && isValidUser(request.resource.data) && request.resource.data.role == 'user';
+      allow update: if isAuthenticated() && (isOwner(uid) || isAdmin()) && isValidUser(request.resource.data) && (isAdmin() || request.resource.data.role == resource.data.role);
+      allow delete: if isAdmin();
+    }
+
+    match /users_public/{uid} {
+      // Public profile data (no PII)
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isOwner(uid);
+      allow update: if isAuthenticated() && isOwner(uid);
+      allow delete: if isAdmin();
+    }
+
+    match /stories/{storyId} {
+      allow read: if isAdmin() || (resource != null && (resource.data.isPublic == true || isOwner(resource.data.authorId)));
+      allow create: if isAuthenticated() && isOwner(request.resource.data.authorId) && isValidStory(request.resource.data);
+      allow update: if isAuthenticated() && (isAdmin() || (resource != null && isOwner(resource.data.authorId))) && isValidStory(request.resource.data) && request.resource.data.authorId == resource.data.authorId;
+      allow delete: if isAuthenticated() && (isAdmin() || (resource != null && isOwner(resource.data.authorId)));
+    }
+
+    match /chapters/{chapterId} {
+      allow read: if isAuthenticated(); // Access controlled by story/room visibility in practice
+      allow create: if isAuthenticated() && isValidChapter(request.resource.data);
+      allow update: if isAuthenticated() && isValidChapter(request.resource.data);
+      allow delete: if isAuthenticated();
+    }
+
+    match /notificacoes/{notifId} {
+      allow read: if isAdmin() || (resource != null && isOwner(resource.data.usuario_id));
+      allow create: if isAuthenticated(); // Users can notify each other (e.g. following)
+      allow update: if isAuthenticated() && (resource != null && isOwner(resource.data.usuario_id)) && hasOnlyAllowedFields(['lida']) && request.resource.data.lida is bool;
+      allow delete: if isAuthenticated() && (resource != null && isOwner(resource.data.usuario_id));
+    }
+
+    match /seguidores/{segId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isOwner(request.resource.data.seguidor_id);
+      allow delete: if isAuthenticated() && isOwner(resource.data.seguidor_id);
+    }
+
+    match /favoritos/{favId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isOwner(request.resource.data.userId);
+      allow delete: if isAuthenticated() && isOwner(resource.data.userId);
+    }
+
+    match /likes/{likeId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isOwner(request.resource.data.userId);
+      allow delete: if isAuthenticated() && isOwner(request.resource.data.userId);
+    }
+
+    match /comments/{commentId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isOwner(request.resource.data.userId);
+      allow update: if isAuthenticated() && isOwner(resource.data.userId);
+      allow delete: if isAuthenticated() && isOwner(resource.data.userId);
+    }
+
+    match /rooms/{roomId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isOwner(request.resource.data.ownerId) && isValidRoom(request.resource.data);
+      allow update: if isAuthenticated() && (isOwner(resource.data.ownerId) || isAdmin());
+      allow delete: if isAuthenticated() && (isOwner(resource.data.ownerId) || isAdmin());
+    }
+
+    match /room_invitations/{invId} {
+      allow read: if isAuthenticated() && (resource != null && (resource.data.receiverId == request.auth.uid || isAdmin()));
+      allow create: if isAuthenticated() && isOwner(request.resource.data.senderId);
+      allow update: if isAuthenticated() && (resource != null && (resource.data.receiverId == request.auth.uid || isAdmin()));
+      allow delete: if isAuthenticated() && (resource != null && (resource.data.receiverId == request.auth.uid || isAdmin()));
+    }
+
+    match /room_members/{memberId} {
+      allow read: if isAuthenticated() && (resource != null && (resource.data.userId == request.auth.uid || isAdmin()));
+      allow create: if isAuthenticated() && isOwner(request.resource.data.userId);
+      allow update: if isAuthenticated() && (resource != null && (resource.data.userId == request.auth.uid || isAdmin()));
+      allow delete: if isAuthenticated() && (resource != null && (resource.data.userId == request.auth.uid || isAdmin()));
+    }
+
+    match /room_messages/{messageId} {
+      allow read: if isAuthenticated() && (resource != null && (resource.data.userId == request.auth.uid || isAdmin()));
+      allow create: if isAuthenticated() && isOwner(request.resource.data.userId);
+      allow delete: if isAuthenticated() && (resource != null && (resource.data.userId == request.auth.uid || isAdmin()));
+    }
+
+    match /characters/{charId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAuthenticated();
+    }
+
+    match /locations/{locId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAuthenticated();
+    }
+
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}

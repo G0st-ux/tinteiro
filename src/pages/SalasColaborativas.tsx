@@ -1,5 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { supabase } from '../services/supabase';
+import { db, UserProfile, auth, handleFirestoreError, OperationType } from '../firebase';
+import { 
+  collection, query, where, onSnapshot, addDoc, 
+  updateDoc, doc, deleteDoc, getDocs, getDoc, 
+  serverTimestamp, orderBy, limit, writeBatch
+} from 'firebase/firestore';
 import { 
   Users, Plus, Search, X, Check, Trash2, 
   Loader2, ChevronRight, UserPlus, MessageSquare
@@ -9,7 +14,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { criarNotificacao } from '../services/notificacoesService';
 
 interface SalasColaborativasProps {
-  usuario: { id: string; nome: string; foto?: string; };
+  usuario: UserProfile;
   t: any;
   onEntrarSala: (sala: any) => void;
 }
@@ -28,48 +33,79 @@ export const SalasColaborativas: React.FC<SalasColaborativasProps> = ({ usuario,
   const [convidados, setConvidados] = useState<any[]>([]);
   const [buscandoUsuarios, setBuscandoUsuarios] = useState(false);
 
-  const carregarDados = useCallback(async () => {
-    setCarregando(true);
-    try {
-      // 1. Buscar convites pendentes
-      const { data: convites } = await supabase
-        .from('colaboracoes')
-        .select('*, usuarios!dono_id(nome, foto)')
-        .eq('convidado_id', usuario.id)
-        .eq('status', 'pendente');
-      
-      setConvitesPendentes(convites || []);
-
-      // 2. Buscar salas onde é dono (aceitas)
-      const { data: salasDono } = await supabase
-        .from('colaboracoes')
-        .select('*, membros_sala(*, usuarios(*))')
-        .eq('dono_id', usuario.id)
-        .eq('status', 'aceito');
-
-      // 3. Buscar salas onde é membro
-      const { data: participacoes } = await supabase
-        .from('membros_sala')
-        .select('*, colaboracoes(*, membros_sala(*, usuarios(*)))')
-        .eq('usuario_id', usuario.id);
-
-      const salasMembro = participacoes?.map(p => p.colaboracoes).filter(Boolean) || [];
-      
-      // Unificar e remover duplicatas por ID
-      const todasSalas = [...(salasDono || []), ...salasMembro];
-      const salasUnicas = Array.from(new Map(todasSalas.map(s => [s.id, s])).values());
-      
-      setSalas(salasUnicas);
-    } catch (error) {
-      console.error('Erro ao carregar salas:', error);
-    } finally {
-      setCarregando(false);
-    }
-  }, [usuario.id]);
-
+  // Real-time listener for invitations
   useEffect(() => {
-    carregarDados();
-  }, [carregarDados]);
+    if (!usuario?.uid) return;
+
+    const q = query(
+      collection(db, 'room_invitations'),
+      where('receiverId', '==', usuario.uid),
+      where('status', '==', 'pending')
+    );
+
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
+      const invites = await Promise.all(snapshot.docs.map(async (d) => {
+        const data = d.data();
+        const senderSnap = await getDoc(doc(db, 'users_public', data.senderId));
+        const roomSnap = await getDoc(doc(db, 'rooms', data.roomId));
+        return {
+          id: d.id,
+          ...data,
+          sender: senderSnap.exists() ? senderSnap.data() : null,
+          room: roomSnap.exists() ? roomSnap.data() : null
+        };
+      }));
+      setConvitesPendentes(invites);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'room_invitations');
+    });
+
+    return () => unsubscribe();
+  }, [usuario?.uid]);
+
+  // Real-time listener for rooms (where user is a member)
+  useEffect(() => {
+    if (!usuario?.uid) return;
+
+    const q = query(
+      collection(db, 'room_members'),
+      where('userId', '==', usuario.uid)
+    );
+
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
+      setCarregando(true);
+      try {
+        const roomsData = await Promise.all(snapshot.docs.map(async (memberDoc) => {
+          const memberData = memberDoc.data();
+          const roomSnap = await getDoc(doc(db, 'rooms', memberData.roomId));
+          if (!roomSnap.exists()) return null;
+          
+          const roomData = roomSnap.data();
+          // Fetch members for each room
+          const membersQ = query(collection(db, 'room_members'), where('roomId', '==', memberData.roomId));
+          const membersSnap = await getDocs(membersQ);
+          const members = await Promise.all(membersSnap.docs.map(async (m) => {
+            const mData = m.data();
+            const uSnap = await getDoc(doc(db, 'users_public', mData.userId));
+            return { ...mData, user: uSnap.exists() ? uSnap.data() : null };
+          }));
+
+          return {
+            id: roomSnap.id,
+            ...roomData,
+            members
+          };
+        }));
+        setSalas(roomsData.filter(Boolean));
+      } catch (error) {
+        console.error('Erro ao carregar salas:', error);
+      } finally {
+        setCarregando(false);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [usuario?.uid]);
 
   // Busca de usuários com debounce
   useEffect(() => {
@@ -81,13 +117,20 @@ export const SalasColaborativas: React.FC<SalasColaborativasProps> = ({ usuario,
     const timer = setTimeout(async () => {
       setBuscandoUsuarios(true);
       try {
-        const { data } = await supabase
-          .from('usuarios')
-          .select('id, nome, foto')
-          .ilike('nome', `%${buscaUsuario}%`)
-          .neq('id', usuario.id)
-          .limit(5);
-        setResultadosUsuarios(data || []);
+        const q = query(
+          collection(db, 'users_public'),
+          orderBy('nome'),
+          limit(20)
+        );
+        const snap = await getDocs(q);
+        const users = snap.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .filter((u: any) => 
+            u.id !== usuario.uid && 
+            u.nome?.toLowerCase().includes(buscaUsuario.toLowerCase())
+          )
+          .slice(0, 5);
+        setResultadosUsuarios(users);
       } catch (error) {
         console.error('Erro ao buscar usuários:', error);
       } finally {
@@ -96,59 +139,46 @@ export const SalasColaborativas: React.FC<SalasColaborativasProps> = ({ usuario,
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [buscaUsuario, usuario.id]);
+  }, [buscaUsuario, usuario.uid]);
 
-  const handleAceitarConvite = async (convite: any) => {
+  const handleAceitarConvite = async (invitation: any) => {
     try {
-      const meuId = Number(usuario.id);
-      const salaId = Number(convite.id);
-      const donoId = Number(convite.dono_id);
+      const batch = writeBatch(db);
 
-      // 1. Atualizar status da colaboração
-      await supabase
-        .from('colaboracoes')
-        .update({ status: 'aceito' })
-        .eq('id', salaId);
+      // 1. Atualizar status do convite
+      batch.update(doc(db, 'room_invitations', invitation.id), { status: 'accepted' });
 
       // 2. Inserir como membro
-      await supabase
-        .from('membros_sala')
-        .insert({ 
-          sala_id: salaId, 
-          usuario_id: meuId, 
-          papel: 'colaborador' 
-        });
+      const memberRef = doc(collection(db, 'room_members'));
+      batch.set(memberRef, {
+        roomId: invitation.roomId,
+        userId: usuario.uid,
+        role: 'colaborador',
+        joinedAt: new Date().toISOString()
+      });
+
+      await batch.commit();
 
       // 3. Notificar dono
       await criarNotificacao(
-        donoId, 
+        invitation.senderId, 
         'colaboracao', 
-        `${usuario.nome} aceitou seu convite para a sala "${convite.nome}"!`
+        `${usuario.nome} aceitou seu convite para a sala "${invitation.room?.name}"!`
       );
-
-      carregarDados();
     } catch (error) {
       console.error('Erro ao aceitar convite:', error);
     }
   };
 
-  const handleRecusarConvite = async (convite: any) => {
+  const handleRecusarConvite = async (invitation: any) => {
     try {
-      const salaId = Number(convite.id);
-      const donoId = Number(convite.dono_id);
-
-      await supabase
-        .from('colaboracoes')
-        .update({ status: 'recusado' })
-        .eq('id', salaId);
+      await updateDoc(doc(db, 'room_invitations', invitation.id), { status: 'rejected' });
 
       await criarNotificacao(
-        donoId, 
+        invitation.senderId, 
         'colaboracao', 
-        `${usuario.nome} recusou seu convite para a sala "${convite.nome}"!`
+        `${usuario.nome} recusou seu convite para a sala "${invitation.room?.name}"!`
       );
-
-      carregarDados();
     } catch (error) {
       console.error('Erro ao recusar convite:', error);
     }
@@ -159,44 +189,34 @@ export const SalasColaborativas: React.FC<SalasColaborativasProps> = ({ usuario,
     setCarregando(true);
 
     try {
-      const meuId = Number(usuario.id);
-
-      // 1. Criar a sala base (para o dono)
-      const { data: novaSala, error: erroSala } = await supabase
-        .from('colaboracoes')
-        .insert({
-          nome: nomeSala,
-          descricao: descricaoSala,
-          dono_id: meuId,
-          status: 'aceito' // Dono já aceita automaticamente
-        })
-        .select()
-        .single();
-
-      if (erroSala) throw erroSala;
+      // 1. Criar a sala
+      const roomRef = await addDoc(collection(db, 'rooms'), {
+        name: nomeSala,
+        description: descricaoSala,
+        ownerId: usuario.uid,
+        createdAt: new Date().toISOString()
+      });
 
       // 2. Adicionar dono como membro
-      await supabase
-        .from('membros_sala')
-        .insert({ 
-          sala_id: Number(novaSala.id), 
-          usuario_id: meuId, 
-          papel: 'dono' 
-        });
+      await addDoc(collection(db, 'room_members'), {
+        roomId: roomRef.id,
+        userId: usuario.uid,
+        role: 'dono',
+        joinedAt: new Date().toISOString()
+      });
 
       // 3. Enviar convites para os outros
       for (const convidado of convidados) {
-        const convidadoId = Number(convidado.id);
-        await supabase.from('colaboracoes').insert({
-          nome: nomeSala,
-          descricao: descricaoSala,
-          dono_id: meuId,
-          convidado_id: convidadoId,
-          status: 'pendente'
+        await addDoc(collection(db, 'room_invitations'), {
+          roomId: roomRef.id,
+          senderId: usuario.uid,
+          receiverId: convidado.id,
+          status: 'pending',
+          createdAt: new Date().toISOString()
         });
         
         await criarNotificacao(
-          convidadoId, 
+          convidado.id, 
           'colaboracao', 
           `${usuario.nome} te convidou para a sala "${nomeSala}"!`
         );
@@ -206,7 +226,6 @@ export const SalasColaborativas: React.FC<SalasColaborativasProps> = ({ usuario,
       setNomeSala('');
       setDescricaoSala('');
       setConvidados([]);
-      carregarDados();
     } catch (error) {
       console.error('Erro ao criar sala:', error);
     } finally {
@@ -245,20 +264,20 @@ export const SalasColaborativas: React.FC<SalasColaborativasProps> = ({ usuario,
             {convitesPendentes.map((convite) => (
               <div key={convite.id} className="bg-[var(--card)] border border-[var(--border)] rounded-3xl p-6 flex items-start gap-4 shadow-sm">
                 <div className="w-12 h-12 rounded-2xl overflow-hidden bg-[var(--bg)] flex-shrink-0">
-                  {convite.usuarios?.foto ? (
-                    <img src={convite.usuarios.foto} alt={convite.usuarios.nome} className="w-full h-full object-cover" />
+                  {convite.sender?.foto ? (
+                    <img src={convite.sender.foto} alt={convite.sender.nome} className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-[var(--accent)] bg-[var(--accent)]/10 font-bold">
-                      {convite.usuarios?.nome?.charAt(0)}
+                      {convite.sender?.nome?.charAt(0)}
                     </div>
                   )}
                 </div>
                 <div className="flex-1 space-y-3">
                   <div>
-                    <h3 className="font-bold text-lg">{convite.nome}</h3>
-                    <p className="text-xs opacity-60">Convidado por <span className="font-bold">{convite.usuarios?.nome}</span></p>
+                    <h3 className="font-bold text-lg">{convite.room?.name}</h3>
+                    <p className="text-xs opacity-60">Convidado por <span className="font-bold">{convite.sender?.nome}</span></p>
                   </div>
-                  <p className="text-sm opacity-80 line-clamp-2">{convite.descricao}</p>
+                  <p className="text-sm opacity-80 line-clamp-2">{convite.room?.description}</p>
                   <div className="flex gap-2">
                     <button 
                       onClick={() => handleAceitarConvite(convite)}
@@ -296,8 +315,8 @@ export const SalasColaborativas: React.FC<SalasColaborativasProps> = ({ usuario,
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {salas.map((sala) => {
-              const eDono = sala.dono_id === usuario.id;
-              const membros = sala.membros_sala || [];
+              const eDono = sala.ownerId === usuario.uid;
+              const membros = sala.members || [];
               
               return (
                 <div key={sala.id} className="group bg-[var(--card)] border border-[var(--border)] rounded-[2.5rem] p-8 space-y-6 hover:border-[var(--accent)]/40 transition-all shadow-sm hover:shadow-xl">
@@ -313,9 +332,9 @@ export const SalasColaborativas: React.FC<SalasColaborativasProps> = ({ usuario,
                   </div>
 
                   <div className="space-y-2">
-                    <h3 className="text-2xl font-bold font-serif">{sala.nome}</h3>
+                    <h3 className="text-2xl font-bold font-serif">{sala.name}</h3>
                     <p className="text-sm opacity-60 line-clamp-2 leading-relaxed">
-                      {sala.descricao || 'Nenhuma descrição disponível.'}
+                      {sala.description || 'Nenhuma descrição disponível.'}
                     </p>
                   </div>
 
@@ -323,11 +342,11 @@ export const SalasColaborativas: React.FC<SalasColaborativasProps> = ({ usuario,
                     <div className="flex -space-x-3">
                       {membros.map((m: any, i: number) => (
                         <div key={i} className="w-10 h-10 rounded-full border-2 border-[var(--card)] bg-[var(--bg)] overflow-hidden">
-                          {m.usuarios?.foto ? (
-                            <img src={m.usuarios.foto} alt={m.usuarios.nome} className="w-full h-full object-cover" />
+                          {m.user?.foto ? (
+                            <img src={m.user.foto} alt={m.user.nome} className="w-full h-full object-cover" />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center text-[var(--accent)] text-xs font-bold">
-                              {m.usuarios?.nome?.charAt(0)}
+                              {m.user?.nome?.charAt(0)}
                             </div>
                           )}
                         </div>
