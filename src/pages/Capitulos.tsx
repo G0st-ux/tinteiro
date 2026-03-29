@@ -31,7 +31,8 @@ export const Capitulos: React.FC<CapitulosProps> = ({ usuario, historia: histori
 
   // Editor state
   const [tituloCapitulo, setTituloCapitulo] = useState('');
-  const [conteudoEditor, setConteudoEditor] = useState('');
+  const [pages, setPages] = useState<string[]>(['']);
+  const [activePage, setActivePage] = useState(0);
   const [statusCapitulo, setStatusCapitulo] = useState<'rascunho' | 'publicado'>('rascunho');
 
   const carregarCapitulos = async () => {
@@ -78,7 +79,8 @@ export const Capitulos: React.FC<CapitulosProps> = ({ usuario, historia: histori
   const handleNovoCapitulo = () => {
     setCapituloEditando(null);
     setTituloCapitulo('');
-    setConteudoEditor('');
+    setPages(['']);
+    setActivePage(0);
     setStatusCapitulo('rascunho');
     setEditorAberto(true);
   };
@@ -86,7 +88,8 @@ export const Capitulos: React.FC<CapitulosProps> = ({ usuario, historia: histori
   const handleEditarCapitulo = (cap: any) => {
     setCapituloEditando(cap);
     setTituloCapitulo(cap.titulo);
-    setConteudoEditor(cap.conteudo || '');
+    setPages(cap.pages || ['']);
+    setActivePage(0);
     setStatusCapitulo(cap.status || 'rascunho');
     setEditorAberto(true);
   };
@@ -100,7 +103,7 @@ export const Capitulos: React.FC<CapitulosProps> = ({ usuario, historia: histori
         const capRef = doc(db, 'chapters', capituloEditando.id);
         await updateDoc(capRef, {
           titulo: tituloCapitulo,
-          conteudo: conteudoEditor,
+          pages: pages,
           status: statusCapitulo
         });
       } else {
@@ -108,7 +111,7 @@ export const Capitulos: React.FC<CapitulosProps> = ({ usuario, historia: histori
         await addDoc(collection(db, 'chapters'), {
           storyId: historia.id,
           titulo: tituloCapitulo,
-          conteudo: conteudoEditor,
+          pages: pages,
           order: proximaOrdem,
           status: statusCapitulo,
           createdAt: new Date().toISOString()
@@ -317,20 +320,58 @@ export const Capitulos: React.FC<CapitulosProps> = ({ usuario, historia: histori
                 </div>
                 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 min-h-[500px]">
-                  <div className="space-y-2 flex flex-col">
-                    <label className="label">Conteúdo (Markdown)</label>
+                  <div className="space-y-4 flex flex-col">
+                    <div className="flex items-center justify-between">
+                      <label className="label">Conteúdo (Página {activePage + 1})</label>
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={() => {
+                            const newPages = [...pages];
+                            newPages.splice(activePage + 1, 0, '');
+                            setPages(newPages);
+                            setActivePage(activePage + 1);
+                          }}
+                          className="btn-ghost text-xs px-2 py-1"
+                        >+ Página</button>
+                        {pages.length > 1 && (
+                          <button 
+                            onClick={() => {
+                              const newPages = pages.filter((_, i) => i !== activePage);
+                              setPages(newPages);
+                              setActivePage(Math.max(0, activePage - 1));
+                            }}
+                            className="btn-ghost text-xs px-2 py-1 text-red-500"
+                          >- Página</button>
+                        )}
+                      </div>
+                    </div>
                     <textarea 
-                      value={conteudoEditor}
-                      onChange={e => setConteudoEditor(e.target.value)}
-                      placeholder="Comece a escrever sua história..."
+                      value={pages[activePage]}
+                      onChange={e => {
+                        const newPages = [...pages];
+                        newPages[activePage] = e.target.value;
+                        setPages(newPages);
+                      }}
+                      placeholder="Comece a escrever esta página..."
                       className="input-field flex-1 w-full p-6 resize-none font-mono text-sm leading-relaxed"
                     />
+                    <div className="flex gap-2 overflow-x-auto pb-2">
+                      {pages.map((_, i) => (
+                        <button
+                          key={i}
+                          onClick={() => setActivePage(i)}
+                          className={`px-3 py-1 rounded text-xs ${activePage === i ? 'bg-[var(--accent)] text-white' : 'bg-[var(--bg)]'}`}
+                        >
+                          Pág {i + 1}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                   
                   <div className="space-y-2 flex flex-col">
-                    <label className="label">Visualização</label>
+                    <label className="label">Visualização (Página {activePage + 1})</label>
                     <div className="flex-1 w-full card-ink p-6 overflow-y-auto prose prose-invert max-w-none">
-                      <Markdown>{conteudoEditor || '*Nenhum conteúdo para visualizar*'}</Markdown>
+                      <Markdown>{pages[activePage] || '*Nenhum conteúdo para visualizar*'}</Markdown>
                     </div>
                   </div>
                 </div>

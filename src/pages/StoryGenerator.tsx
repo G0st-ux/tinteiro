@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Sparkles, Download, Save, Loader2, BookOpen, Check, ChevronDown, ChevronUp } from 'lucide-react';
+import { Sparkles, Download, Save, Loader2, BookOpen, Check, ChevronDown, ChevronUp, Plus, X } from 'lucide-react';
 import { AppSettings, Story, Character } from '../types';
-import { GENRES, NARRATIVE_TONES, POV_OPTIONS, SETTINGS_OPTIONS } from '../constants';
+import { GENRES, NARRATIVE_TONES, POV_OPTIONS, SETTINGS_OPTIONS, DIALOGUE_OPTIONS } from '../constants';
 import { generateStoryChapter } from '../services/geminiService';
 
 interface StoryGeneratorProps {
@@ -22,17 +22,19 @@ export const StoryGenerator: React.FC<StoryGeneratorProps> = ({ settings, t, sto
     plot: '',
     tone: NARRATIVE_TONES[0],
     pov: POV_OPTIONS[0],
-    setting: SETTINGS_OPTIONS[0]
+    setting: SETTINGS_OPTIONS[0],
+    dialogueLevel: DIALOGUE_OPTIONS[1]
   });
 
   const [selectedCharacters, setSelectedCharacters] = useState<Character[]>([]);
+  const [manualCharacterName, setManualCharacterName] = useState('');
+  const [manualCharacters, setManualCharacters] = useState<string[]>([]);
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
   const [statusMessage, setStatusMessage] = useState('');
-  const [generatedChapters, setGeneratedChapters] = useState<{ title: string; pages: string[] }[]>([]);
+  const [generatedChapters, setGeneratedChapters] = useState<{ title: string; content: string; transicao: string }[]>([]);
   const [activeTab, setActiveTab] = useState(0);
-  const [activePage, setActivePage] = useState(0);
 
   const toggleCharacter = (char: Character) => {
     if (selectedCharacters.find(c => c.id === char.id)) {
@@ -40,6 +42,17 @@ export const StoryGenerator: React.FC<StoryGeneratorProps> = ({ settings, t, sto
     } else {
       setSelectedCharacters([...selectedCharacters, char]);
     }
+  };
+
+  const addManualCharacter = () => {
+    if (manualCharacterName.trim()) {
+      setManualCharacters([...manualCharacters, manualCharacterName.trim()]);
+      setManualCharacterName('');
+    }
+  };
+
+  const removeManualCharacter = (index: number) => {
+    setManualCharacters(manualCharacters.filter((_, i) => i !== index));
   };
 
   const handleGenerate = async () => {
@@ -52,7 +65,7 @@ export const StoryGenerator: React.FC<StoryGeneratorProps> = ({ settings, t, sto
     setGeneratedChapters([]);
     setProgress(0);
     
-    const chapters: { title: string; pages: string[] }[] = [];
+    const chapters: { title: string; content: string; transicao: string }[] = [];
     
     try {
       setStatusMessage("Construindo o mundo...");
@@ -63,12 +76,16 @@ export const StoryGenerator: React.FC<StoryGeneratorProps> = ({ settings, t, sto
       await new Promise(r => setTimeout(r, 1000));
       setProgress(20);
 
-      // Pass selected characters to the generator
-      const generatorConfig = { ...config, characters: selectedCharacters };
+      // Combine selected and manual characters
+      const combinedCharacters = [
+        ...selectedCharacters.map(c => ({ name: c.basicInfo.name, role: c.basicInfo.role })),
+        ...manualCharacters.map(name => ({ name, role: 'Personagem' }))
+      ];
+      const generatorConfig = { ...config, characters: combinedCharacters };
 
       for (let i = 0; i < config.chapters; i++) {
         setStatusMessage(`Escrevendo o capítulo ${i + 1} de ${config.chapters}...`);
-        const chapter = await generateStoryChapter(settings, generatorConfig, i, chapters.map(c => c.pages.join('\n')));
+        const chapter = await generateStoryChapter(settings, generatorConfig, i, chapters.map(c => c.content));
         chapters.push(chapter);
         setGeneratedChapters([...chapters]);
         setProgress(20 + ((i + 1) / config.chapters) * 70);
@@ -86,7 +103,7 @@ export const StoryGenerator: React.FC<StoryGeneratorProps> = ({ settings, t, sto
   };
 
   const saveToLibrary = () => {
-    const fullContent = generatedChapters.map(c => `## ${c.title}\n\n${c.pages.join('\n\n---PAGINA---\n\n')}`).join('\n\n---\n\n');
+    const fullContent = generatedChapters.map(c => `## ${c.title}\n\n${c.content}`).join('\n\n---\n\n');
     const now = Date.now();
     const newStory: Story = {
       id: Math.random().toString(36).substr(2, 9),
@@ -97,31 +114,70 @@ export const StoryGenerator: React.FC<StoryGeneratorProps> = ({ settings, t, sto
       updatedAt: now,
       charCount: fullContent.length,
       wordCount: fullContent.trim().split(/\s+/).length,
-      chapters: generatedChapters.map(c => ({ title: c.title, content: c.pages.join('\n\n') }))
+      chapters: generatedChapters.map(c => ({ title: c.title, pages: [c.content] })) // Keeping structure for compatibility
     };
     setStories([...stories, newStory]);
-    alert("História salva na biblioteca!");
+    alert(`A história "${config.title}" foi salva com sucesso na sua biblioteca!`);
   };
 
   const downloadChapter = (index: number) => {
     const chapter = generatedChapters[index];
-    const text = `${config.title}\nCapítulo ${index + 1}: ${chapter.title}\n\n${chapter.pages.join('\n\n---PAGINA---\n\n')}`;
-    const blob = new Blob([text], { type: 'text/plain' });
+    const numero = String(index + 1).padStart(2, '0');
+    const tituloLimpo = chapter.title
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-zA-Z0-9\s]/g, '')
+      .trim()
+      .replace(/\s+/g, '_');
+  
+    const texto = [
+      config.title.toUpperCase(),
+      `${'='.repeat(50)}`,
+      `Capítulo ${index + 1}: ${chapter.title}`,
+      `${'='.repeat(50)}`,
+      '',
+      chapter.content,
+      '',
+      `${'─'.repeat(50)}`,
+      `Gerado com Tinteiro ✍️`,
+    ].join('\n');
+  
+    const blob = new Blob([texto], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${config.title} - Capítulo ${String(index + 1).padStart(2, '0')}.txt`;
+    a.download = `Cap${numero}_${tituloLimpo}.txt`;
     a.click();
+    URL.revokeObjectURL(url);
   };
-
+  
   const downloadFull = () => {
-    const text = generatedChapters.map((c, i) => `Capítulo ${i + 1}: ${c.title}\n\n${c.pages.join('\n\n---PAGINA---\n\n')}`).join('\n\n' + '='.repeat(20) + '\n\n');
-    const blob = new Blob([text], { type: 'text/plain' });
+    const texto = [
+      config.title.toUpperCase(),
+      `${'='.repeat(50)}`,
+      `Gênero: ${config.genre} | Tom: ${config.tone}`,
+      `${'='.repeat(50)}`,
+      '',
+      ...generatedChapters.flatMap((c, i) => [
+        `CAPÍTULO ${i + 1}: ${c.title.toUpperCase()}`,
+        `${'─'.repeat(40)}`,
+        '',
+        c.content,
+        '',
+        i < generatedChapters.length - 1 ? `${'* '.repeat(20)}` : '',
+        '',
+      ]),
+      `${'='.repeat(50)}`,
+      `FIM — Gerado com Tinteiro ✍️`,
+    ].join('\n');
+  
+    const blob = new Blob([texto], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${config.title} - Completa.txt`;
+    a.download = `${config.title.replace(/[^a-zA-Z0-9\s]/g, '').trim().replace(/\s+/g, '_')}_Completa.txt`;
     a.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -228,6 +284,32 @@ export const StoryGenerator: React.FC<StoryGeneratorProps> = ({ settings, t, sto
                 ))
               )}
             </div>
+
+            <div className="space-y-2 pt-4 border-t border-[var(--border)]">
+              <label className="label">Adicionar Personagem Manualmente</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={manualCharacterName}
+                  onChange={e => setManualCharacterName(e.target.value)}
+                  placeholder="Nome do personagem"
+                  className="input-field w-full"
+                />
+                <button onClick={addManualCharacter} className="p-2 bg-[var(--accent)] text-white rounded-[2px]">
+                  <Plus size={20} />
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {manualCharacters.map((name, index) => (
+                  <span key={index} className="flex items-center gap-1 bg-[var(--bg)] border border-[var(--border)] px-2 py-1 rounded-[2px] text-sm">
+                    {name}
+                    <button onClick={() => removeManualCharacter(index)} className="text-[var(--accent)]">
+                      <X size={14} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
           </section>
 
           <section className="card-ink p-6">
@@ -269,6 +351,16 @@ export const StoryGenerator: React.FC<StoryGeneratorProps> = ({ settings, t, sto
                     className="input-field w-full bg-[#07070e]"
                   >
                     {SETTINGS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="label">Nível de Diálogos</label>
+                  <select 
+                    value={config.dialogueLevel}
+                    onChange={e => setConfig({...config, dialogueLevel: e.target.value})}
+                    className="input-field w-full bg-[#07070e]"
+                  >
+                    {DIALOGUE_OPTIONS.map(d => <option key={d} value={d}>{d}</option>)}
                   </select>
                 </div>
               </div>
@@ -343,10 +435,10 @@ export const StoryGenerator: React.FC<StoryGeneratorProps> = ({ settings, t, sto
                 {generatedChapters.map((ch, i) => (
                   <button
                     key={i}
-                    onClick={() => { setActiveTab(i); setActivePage(0); }}
+                    onClick={() => setActiveTab(i)}
                     className={`px-4 py-2 text-sm font-bold whitespace-nowrap border-b-2 transition-all ${activeTab === i ? 'border-[var(--accent)] text-[var(--accent)]' : 'border-transparent opacity-50'}`}
                   >
-                    Cap {i + 1}, {ch.pages.length} {ch.pages.length === 1 ? 'página' : 'páginas'}
+                    Capítulo {i + 1}
                   </button>
                 ))}
               </div>
@@ -362,20 +454,8 @@ export const StoryGenerator: React.FC<StoryGeneratorProps> = ({ settings, t, sto
                   </button>
                 </div>
                 
-                <div className="flex gap-2 overflow-x-auto pb-2">
-                  {generatedChapters[activeTab].pages.map((_, p) => (
-                    <button
-                      key={p}
-                      onClick={() => setActivePage(p)}
-                      className={`px-3 py-1 text-xs rounded-[2px] border transition-all ${activePage === p ? 'bg-[var(--accent)] border-[var(--accent)] text-white' : 'bg-[var(--bg)] border-[var(--border)]'}`}
-                    >
-                      Pág {p + 1}
-                    </button>
-                  ))}
-                </div>
-
                 <div className="font-serif leading-relaxed text-lg whitespace-pre-wrap bg-[var(--bg)] p-6 rounded-[2px] border border-[var(--border)] min-h-[300px] max-h-[500px] overflow-y-auto">
-                  {generatedChapters[activeTab].pages[activePage]}
+                  {generatedChapters[activeTab].content}
                 </div>
               </div>
             </section>

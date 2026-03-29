@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { UserProfile } from '../firebase';
 import { 
   Home, Edit3, Book, MessageSquare, Zap, 
-  Image as ImageIcon, Users, Map, Settings, Palette, LogOut, User,
+  Users, Map, Settings, Palette, LogOut, User,
   BookOpen, Bell, Search, Compass, DoorOpen, Sword, PenTool
 } from 'lucide-react';
 import { THEMES } from '../constants';
@@ -30,7 +30,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ usuario, settings, setSettings
     { to: "/library", icon: Book, label: t.library },
     { to: "/ai-chat", icon: MessageSquare, label: t.aiChat },
     { to: "/generator", icon: Zap, label: t.storyGen },
-    { to: "/image-gen", icon: ImageIcon, label: t.imageGen },
     { to: "/minhas-historias", icon: BookOpen, label: "Minhas Histórias" },
     { to: "/explorar", icon: Compass, label: "Explorar" },
     { to: "/buscar", icon: Search, label: "Buscar" },

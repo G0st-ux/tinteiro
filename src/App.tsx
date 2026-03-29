@@ -10,7 +10,6 @@ import { Characters } from './pages/Characters';
 import { AIChat } from './pages/AIChat';
 import { World } from './pages/World';
 import { StoryGenerator } from './pages/StoryGenerator';
-import { ImageGenerator } from './pages/ImageGenerator';
 import { ProfilePage } from './pages/ProfilePage';
 import { Notificacoes } from './pages/Notificacoes';
 import { BuscaUsuarios } from './pages/BuscaUsuarios';
@@ -91,7 +90,6 @@ function AppContent({
           <Route path="/ai-chat" element={<AIChat settings={settings} t={t} characters={characters} stories={stories} />} />
           <Route path="/world" element={<World settings={settings} locations={locations} setLocations={setLocations} t={t} />} />
           <Route path="/generator" element={<StoryGenerator settings={settings} stories={stories} setStories={setStories} characters={characters} t={t} />} />
-          <Route path="/image-gen" element={<ImageGenerator settings={settings} characters={characters} setCharacters={setCharacters} t={t} />} />
           <Route path="/perfil" element={<ProfilePage usuario={usuario} setUsuario={setUsuario} t={t} />} />
           <Route path="/notificacoes" element={<Notificacoes usuario={usuario} t={t} />} />
           <Route path="/buscar" element={<BuscaUsuarios usuario={usuario} t={t} />} />

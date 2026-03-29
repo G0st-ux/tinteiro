@@ -26,6 +26,7 @@ export const LeitorHistoria: React.FC<LeitorHistoriaProps> = ({ historia: histor
   const [historia, setHistoria] = useState<any>(historiaProp);
   const [capitulos, setCapitulos] = useState<any[]>([]);
   const [capituloAtual, setCapituloAtual] = useState(0);
+  const [paginaAtual, setPaginaAtual] = useState(0);
   const [carregando, setCarregando] = useState(true);
   const [curtido, setCurtido] = useState(false);
   const [favoritado, setFavoritado] = useState(false);
@@ -368,7 +369,7 @@ export const LeitorHistoria: React.FC<LeitorHistoriaProps> = ({ historia: histor
             </div>
 
             <div className="prose prose-lg dark:prose-invert max-w-none prose-p:leading-[1.8] prose-p:text-[1.1rem] prose-p:mb-8 opacity-90 font-sans">
-              <Markdown>{capitulos[capituloAtual].conteudo}</Markdown>
+              <Markdown>{capitulos[capituloAtual].pages[paginaAtual]}</Markdown>
             </div>
 
             {/* Navegação e Curtida */}
@@ -387,16 +388,32 @@ export const LeitorHistoria: React.FC<LeitorHistoriaProps> = ({ historia: histor
 
               <div className="flex items-center justify-between gap-4">
                 <button 
-                  onClick={() => { setCapituloAtual(prev => prev - 1); scrollParaTopo(); }}
-                  disabled={capituloAtual === 0}
+                  onClick={() => {
+                    if (paginaAtual > 0) {
+                      setPaginaAtual(prev => prev - 1);
+                      scrollParaTopo();
+                    } else if (capituloAtual > 0) {
+                      setCapituloAtual(prev => prev - 1);
+                      setPaginaAtual(capitulos[capituloAtual - 1].pages.length - 1);
+                      scrollParaTopo();
+                    }
+                  }}
+                  disabled={capituloAtual === 0 && paginaAtual === 0}
                   className="btn-ghost flex items-center gap-2 px-6 py-3 text-sm"
                 >
                   <ChevronLeft size={20} /> Anterior
                 </button>
+                <div className="text-xs opacity-40 font-sans">
+                  Pág {paginaAtual + 1} de {capitulos[capituloAtual].pages.length}
+                </div>
                 <button 
                   onClick={() => {
-                    if (capituloAtual < capitulos.length - 1) {
+                    if (paginaAtual < capitulos[capituloAtual].pages.length - 1) {
+                      setPaginaAtual(prev => prev + 1);
+                      scrollParaTopo();
+                    } else if (capituloAtual < capitulos.length - 1) {
                       setCapituloAtual(prev => prev + 1);
+                      setPaginaAtual(0);
                       scrollParaTopo();
                     } else {
                       setLendo(false);
@@ -404,7 +421,7 @@ export const LeitorHistoria: React.FC<LeitorHistoriaProps> = ({ historia: histor
                   }}
                   className="btn-primary flex items-center gap-2 px-8 py-3 text-sm"
                 >
-                  {capituloAtual < capitulos.length - 1 ? 'Próximo Capítulo' : 'Finalizar Leitura'}
+                  {paginaAtual < capitulos[capituloAtual].pages.length - 1 ? 'Próxima Página' : capituloAtual < capitulos.length - 1 ? 'Próximo Capítulo' : 'Finalizar Leitura'}
                   <ChevronRight size={20} />
                 </button>
               </div>

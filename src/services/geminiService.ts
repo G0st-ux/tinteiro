@@ -13,31 +13,41 @@ export const generateStoryChapter = async (
   if (!apiKey) throw new Error("API Key não configurada");
   const ai = new GoogleGenAI({ apiKey });
   
+  const isLastChapter = chapterIndex === config.chapters - 1;
+
   const prompt = `
-    Você é um escritor profissional. Escreva o capítulo ${chapterIndex + 1} de uma história com as seguintes configurações:
+    Você é um escritor profissional de ficção. Escreva o capítulo ${chapterIndex + 1} de ${config.chapters} da história abaixo.
+
+    DADOS DA HISTÓRIA:
     Título: ${config.title}
     Gênero: ${config.genre}
     Tom: ${config.tone}
     Ponto de Vista: ${config.pov}
     Cenário: ${config.setting}
-    
-    Personagens:
-    ${config.characters.map((c: any) => `- ${c.basicInfo.name} (${c.basicInfo.role})`).join('\n')}
-    
-    Enredo/Prévia:
+
+    PERSONAGENS:
+    ${config.characters.map((c: any) => `- ${c.name} (${c.role})`).join('\n')}
+
+    ENREDO:
     ${config.plot}
-    
-    Contexto dos capítulos anteriores (resumo):
-    ${previousChapters.map((c, i) => `Capítulo ${i + 1}: ${c.slice(0, 300)}...`).join('\n')}
-    
-    Instruções específicas:
-    - Escreva exatamente ${config.pagesPerChapter} páginas, com foco em ${config.linesPerPage} linhas por página.
-    - Separe cada página com o delimitador "---PAGINA---".
-    - Mantenha a consistência com os capítulos anteriores.
-    - O capítulo deve ter um título próprio.
-    - Retorne no formato:
-    TITULO: [Título do Capítulo]
-    CONTEUDO: [Conteúdo da página 1] ---PAGINA--- [Conteúdo da página 2] ...
+
+    CONTEXTO DOS CAPÍTULOS ANTERIORES:
+    ${previousChapters.length > 0
+      ? previousChapters.map((c, i) => `Capítulo ${i + 1}: ${c.slice(0, 400)}...`).join('\n')
+      : 'Este é o primeiro capítulo — apresente o mundo e os personagens.'}
+
+    INSTRUÇÕES OBRIGATÓRIAS:
+    - Escreva aproximadamente ${config.pagesPerChapter} páginas com ${config.linesPerPage} linhas por página.
+    - O capítulo deve ter um título próprio criativo.
+    - Mantenha consistência total com os capítulos anteriores.
+    - ${isLastChapter
+        ? 'Este é o ÚLTIMO capítulo. Conclua a história de forma satisfatória, resolvendo todos os conflitos.'
+        : `No final do capítulo, escreva uma TRANSIÇÃO NARRATIVA — um parágrafo curto e instigante que conecta este capítulo ao próximo, deixando o leitor ansioso para continuar. Separe este parágrafo com a linha: [TRANSIÇÃO]`}
+
+    FORMATO DE RESPOSTA (siga exatamente):
+    TITULO: [Título criativo do capítulo]
+    CONTEUDO: [Texto completo do capítulo]
+    ${!isLastChapter ? 'TRANSICAO: [Parágrafo de transição para o próximo capítulo]' : ''}
   `;
 
   const response = await ai.models.generateContent({
@@ -46,16 +56,18 @@ export const generateStoryChapter = async (
   });
   
   const text = response.text || '';
-  
+
   const titleMatch = text.match(/TITULO:\s*(.*)/i);
-  const contentMatch = text.match(/CONTEUDO:\s*([\s\S]*)/i);
-  
+  const contentMatch = text.match(/CONTEUDO:\s*([\s\S]*?)(?=TRANSICAO:|$)/i);
+  const transicaoMatch = text.match(/TRANSICAO:\s*([\s\S]*)/i);
+
   const content = contentMatch ? contentMatch[1].trim() : text;
-  const pages = content.split('---PAGINA---').map(p => p.trim());
-  
+  const transicao = transicaoMatch ? transicaoMatch[1].trim() : '';
+
   return {
     title: titleMatch ? titleMatch[1].trim() : `Capítulo ${chapterIndex + 1}`,
-    pages: pages
+    content: transicao ? `${content}\n\n— ✦ —\n\n${transicao}` : content,
+    transicao: transicao
   };
 };
 

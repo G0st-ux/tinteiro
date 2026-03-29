@@ -33,7 +33,7 @@ export interface Story {
   updatedAt: number;
   charCount: number;
   wordCount: number;
-  chapters?: { title: string; content: string }[];
+  chapters?: { title: string; pages: string[] }[];
 }
 
 export interface Character {

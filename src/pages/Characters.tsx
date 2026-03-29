@@ -957,7 +957,8 @@ export const Characters: React.FC<CharactersProps> = ({ settings, characters, se
               <motion.div 
                 layout
                 key={char.id}
-                className="card-ink card-character group"
+                className="card-ink card-character group cursor-pointer"
+                onClick={() => handleEdit(char)}
               >
                 <div className="flex items-start justify-between mb-4">
                   {char.imageUrl ? (
@@ -971,13 +972,13 @@ export const Characters: React.FC<CharactersProps> = ({ settings, characters, se
                   )}
                   <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button 
-                      onClick={() => handleEdit(char)}
+                      onClick={(e) => { e.stopPropagation(); handleEdit(char); }}
                       className="p-2 text-white/40 hover:text-[var(--accent)] transition-colors"
                     >
                       <Edit2 size={16} />
                     </button>
                     <button 
-                      onClick={() => handleDelete(char.id)}
+                      onClick={(e) => { e.stopPropagation(); handleDelete(char.id); }}
                       className="p-2 text-white/40 hover:text-red-400 transition-colors"
                     >
                       <Trash2 size={16} />

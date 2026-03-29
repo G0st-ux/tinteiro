@@ -105,6 +105,10 @@ export const SETTINGS_OPTIONS = [
   'Medieval', 'Contemporâneo', 'Futurista', 'Apocalíptico', 'Fantástico', 'Outro'
 ];
 
+export const DIALOGUE_OPTIONS = [
+  'Pouco', 'Médio', 'Muito'
+];
+
 export const LOCATION_TYPES = [
   'Cidade', 'Vila', 'Floresta', 'Dungeon', 'País', 'Planeta', 'Outro'
 ];
