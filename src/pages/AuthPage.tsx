@@ -17,7 +17,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onLogin }) => {
     try {
       await loginWithGoogle();
     } catch (err: any) {
-      setError("Não foi possível realizar o login. Tente novamente.");
+      setError(`Erro ao realizar login: ${err.message}`);
       setIsLoading(false);
     }
   };
